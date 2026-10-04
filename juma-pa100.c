@@ -581,8 +581,10 @@
  display screen is still displayed. It vanishes once the display page is changed. This update fixes this anomaly and now if the configuration is
  changed and saved the starting page is shown. A.Ryan - 5B4AIY - 26/AUG/2023
  ---------------------------------- DL4JC Modifications ----------------------------------
- 4.02a	Based on v4.01a Build 3.
- Build 1-DL4JC	The EEPROM layout is unchanged, there is no checksum error on loading.
+ v4.03 - DL4JC - 04/OCT/2026. Based on v4.01a Build 3. From this version on, every release has its own version number,
+ which is shown on the start-up screen; there is no separate build number any more. (The test builds before this release
+ were called v4.02a Build 1 - 5-DL4JC.) The original configuration and calibration blocks are unchanged, so there is no
+ checksum error on loading, and the original firmware can be loaded again without losing the calibration.
  TX protection:
  - TX_ON is forced off in the User Configuration mode. Previously it stayed in the state it was in when the mode was entered.
  - The trap handlers now force TX_ON off and run the fan at high speed before anything else. (See safe_state() in traps.c)
@@ -591,15 +593,6 @@
    in the main loop, and was suspended whenever the main loop was blocked, e.g. waiting for a button release or a save prompt.
  - All A-D conversions are now made in the 1mS interrupt (adc12.c), which allows the SWR test to run there. convert_adc12() now
    returns the latest value. The tone generator (TMR2) interrupt priority has been raised above that of TMR3.
- Band select:
- - KX2/KX3 (ASCII) mode: frequencies above 30MHz are limited before the conversion to unsigned int. Previously e.g. 144MHz
-   wrapped to 12.9MHz and selected the 20m filter with TX enabled.
- - Juma TRX-2 mode: an invalid band now sets NOT_KNOWN (TX inhibited) instead of 10m.
- - New band select mode 6, Xiegu, using the Xiegu ACC port band voltages (230mV steps). (See get_xiegu_band())
- Other:
- - Service mode: an alarm now really exits the service mode. Previously the service loop continued without handling any buttons.
- - Remote mode: the known limitation that the command time-out never expires when polling is enabled is now documented in remote().
- - DL4JC added to the start-up screen.
  Filter protection:
  - A band change now turns RF off first, the filter relays are switched once the PA relays have released, and TX is
    held off until the new relays have settled (RELAY_SETTLE). Previously the relays were switched under full power.
@@ -608,31 +601,41 @@
    the occasional O/C alarm in the F-Sense mode on the first transmission after a band change, e.g. 40m to 20m, when
    the 20m signal was amplified through the 40m filter until the new band had been measured. There is no additional
    delay when the band is unchanged, so full QSK still works.
- Build 5-DL4JC
- - New service menu page "Beep Tone" after "Beep Len": JUMA (default, unchanged) or RS-928. The RS-928 clone has a buzzer
-   that only sounds clean between about 2300 and 2800Hz, so the JUMA tones of 600 - 2000Hz sound harsh on it. RS-928
-   moves the tones into this range, in the same order (see beep() in timers_pwm.c). Stored in the extension block, which
-   is now also saved with the service settings. The alarm beep uses the new constant HZ2000 instead of 1843.
- Build 4-DL4JC
- - New band select mode 7, HR50: the PA-100D answers the serial commands of the HobbyPCB Hardrock-50 amplifier (FA, IF,
-   HRBN, HRMD, HRRX, HRTP, HRVT, HRAT, HRBR, HRKX, HRTM), so that programs and transceivers with HR50 support can select
-   the band and the Operate/Standby state, and read the status. (See serial_hr50()) The mode is stored as KX2/KX3 in the
-   original configuration block, with HR50 in the extension block. The original firmware then uses the FA frequency data.
- Build 3-DL4JC
- - New User Configuration page "F-Sense QSK", only shown in the F-Sense mode. Off (default): TX is only enabled once the
-   input frequency has been measured in the current transmission, approx. 20-40mS without the PA at the start of each
-   transmission. On: TX immediately, for full QSK, as in Build 2.
- - New EEPROM extension block at 0xF100 with its own checksum for settings added by DL4JC (see pa100_eeprom.h). The
-   original configuration and calibration blocks are unchanged, so there is no checksum error when loading this
-   firmware, and the original firmware can be loaded again without losing the calibration.
- - The Xiegu band select mode is stored as F-Sense in the original configuration block, with Xiegu in the extension
-   block. If the original firmware is loaded again, it uses F-Sense instead of an unknown mode value.
- Build 2-DL4JC
  - F-Sense mode only: if, within the first 200mS of a transmission, the input frequency is below the selected filter for
    3mS, RF is also turned off until the band has been measured. This avoids poorly suppressed harmonics on the first
    transmission after a band change from a higher to a lower band, e.g. 80m through the 20m filter. Later in the
    transmission this test is not made, as SSB speech can produce low miscounts (see the notes for v1.05p Build 3).
-   DL4JC - 04/OCT/2026
+ - New User Configuration page "F-Sense QSK", only shown in the F-Sense mode. Off (default): TX is only enabled once the
+   input frequency has been measured in the current transmission, approx. 20-40mS without the PA at the start of each
+   transmission. On: TX immediately, for full QSK.
+ Band select:
+ - KX2/KX3 (ASCII) mode: frequencies above 30MHz are limited before the conversion to unsigned int. Previously e.g. 144MHz
+   wrapped to 12.9MHz and selected the 20m filter with TX enabled.
+ - Juma TRX-2 mode: an invalid band now sets NOT_KNOWN (TX inhibited) instead of 10m.
+ - New band select mode 6, Xiegu, using the Xiegu ACC port band voltages (230mV steps). (See get_xiegu_band()) It is
+   stored as F-Sense in the original configuration block, with Xiegu in the extension block. If the original firmware is
+   loaded again, it uses F-Sense instead of an unknown mode value.
+ - New band select mode 7, HR50: the PA-100D answers the serial commands of the HobbyPCB Hardrock-50 amplifier (FA, IF,
+   HRBN, HRMD, HRRX, HRTP, HRVT, HRAT, HRBR, HRKX, HRTM), so that programs and transceivers with HR50 support can select
+   the band and the Operate/Standby state, and read the status. (See serial_hr50()) The mode is stored as KX2/KX3 in the
+   original configuration block, with HR50 in the extension block. The original firmware then uses the FA frequency data.
+ Serial interface:
+ - The receive interrupt reads the whole UART FIFO, and an overrun is cleared. Previously reception could stop for good at
+   higher baud rates (e.g. 115200) after a short burst. (See uart.c)
+ - The remote status reply is formatted completely and sent in one piece. Previously gaps between the fields could split
+   the line. The format is unchanged.
+ - Remote mode: the known limitation that the command time-out never expires when polling is enabled is now documented in remote().
+ EEPROM:
+ - New EEPROM extension block at 0xF100 with its own checksum for settings added by DL4JC (see pa100_eeprom.h). It is
+   saved with the user configuration and with the service settings.
+ Other:
+ - Service mode: an alarm now really exits the service mode. Previously the service loop continued without handling any buttons.
+ - New service menu page "Beep Tone" after "Beep Len": JUMA (default, unchanged) or RS-928. The RS-928 clone has a buzzer
+   that only sounds clean between about 2300 and 2800Hz, so the JUMA tones of 600 - 2000Hz sound harsh on it. RS-928
+   moves the tones into this range, in the same order (see beep() in timers_pwm.c). The alarm beep uses the new constant
+   HZ2000 instead of 1843.
+ - Start-up screen: "JUMA PA100 v4.03" / "OH2NLT/7SV DL4JC".
+ - Builds with MPLAB XC16 (build-xc16.sh). The program memory ends below the Ingenia boot loader (juma-trx2.gld).
 */
 
 #include <stdio.h>
@@ -918,7 +921,7 @@ const char limit[] = {"Limit"};
 const char start[] = {"Start"};
 const char units[] = {"Units:%10s"};
 const char Yes_No[] = {"PWR:No BAND+:Yes"};
-const char firmware[] = {"\n\r%sD Firmware: %s Build: %s Date: %s\n\r"};
+const char firmware[] = {"\n\r%sD Firmware: %s Date: %s\n\r"};
 const char copyright[] = {"Copyright: Juha Niinikoski - OH2NLT & Matti Hohtola - OH7SV\n\r"};
 const char additional_features[] = {"(Additional features and modifications - Adrian Ryan - 5B4AIY)\n\r"};
 const char dl4jc_features[] = {"(Modified build - DL4JC)\n\r"};
@@ -2872,7 +2875,7 @@ void fan_control(void)
 
 void display_hdr(void)
 	{
-	printf(firmware, Juma_PA100, VERSION, BUILD_NUMBER, BUILD_DATE);
+	printf(firmware, Juma_PA100, VERSION, BUILD_DATE);
 	printf(copyright);
 	printf(additional_features);
 	printf(dl4jc_features);

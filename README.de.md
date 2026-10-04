@@ -1,4 +1,4 @@
-# JUMA PA-100D Firmware – v4.02a (DL4JC)
+# JUMA PA-100D Firmware – v4.03 (DL4JC)
 
 Deutsch | [English](README.md)
 
@@ -79,7 +79,9 @@ mehrere Fehlerbehebungen, die auch v4.01a betreffen, ein **Xiegu**-Bandspannungs
 - Linker-Skript: Der Programmspeicher endet **unterhalb des Bootloaders** (0x17D00). Das Build-Skript erzeugt keine HEX-Datei, die Daten im Bootloader-Bereich enthält.
 - **EEPROM-Erweiterungsblock** für die neuen Einstellungen, siehe [EEPROM](#eeprom-und-kompatibilität).
 - Service-Menü **Beep Tone**: Töne im sauberen Bereich des RS-928-Summers, siehe [Beep Tone](#beep-tone-service-menü).
-- Startbildschirm: `JUMA PA100v4.02a` / `OH2NLT/7SV DL4JC`.
+- Startbildschirm: `JUMA PA100 v4.03` / `OH2NLT/7SV DL4JC`. Jedes Release hat eine eigene Versionsnummer,
+  die beim Einschalten angezeigt wird; eine getrennte Build-Nummer gibt es nicht mehr. (Die Test-Builds
+  vor v4.03 hießen v4.02a Build 1–5-DL4JC.)
 
 Die vollständige technische Änderungshistorie steht im Kommentarkopf von `juma-pa100.c` (Abschnitt *DL4JC Modifications*).
 
@@ -246,7 +248,7 @@ ein Programmer (siehe [Wiederherstellung](#wiederherstellung-mit-programmer)).
    stammt aus der Zeit vor der Selbsthaltung, die der Bootloader seit 23.01.2007 hat, siehe `iBL.s` /
    `mini_lcd-trx2.c`.)
 5. Warten, bis *dsPIC6014A detected, firmware version 1.1* erscheint → OK.
-6. *open HEX file* → `firmware/Juma PA-100D v4.02a Build 5-DL4JC.hex` wählen (liegt auch dem
+6. *open HEX file* → `firmware/Juma PA-100D v4.03.hex` wählen (liegt auch dem
    [neuesten Release](https://github.com/jcmerg/juma-pa100d-firmware/releases/latest) bei).
 7. Nur **„program flash“** darf angehakt sein. **„write data EEPROM“ und „configure registers“ dürfen
    nicht angehakt sein.** Es darf keine Fehlermeldung erscheinen (siehe unten).
@@ -270,7 +272,7 @@ noch die Gerätedatei oder Administratorrechte. Voraussetzung: Python 3 und pyse
 (`pip install pyserial`). Kabel und Prüfung der seriellen Schnittstelle (Schritte 1 und 2) bleiben gleich.
 
 ```
-python3 tools/juma-flash.py --port COM3 "firmware/Juma PA-100D v4.02a Build 5-DL4JC.hex"
+python3 tools/juma-flash.py --port COM3 "firmware/Juma PA-100D v4.03.hex"
 ```
 
 (macOS/Linux: z. B. `--port /dev/cu.usbserial-XXXX` oder `/dev/ttyUSB0`; ohne `--port` werden die
@@ -368,8 +370,8 @@ das Projekt baut wie bisher ohne Optimierung, `-O0`).
 ./build-xc16.sh
 ```
 
-Ergebnis: `firmware/Juma PA-100D <VERSION> Build <BUILD>.hex`. Version und Build-Nummer
-kommen aus `juma-pa100.h` (`VERSION`, `BUILD_NUMBER`). Das Skript
+Ergebnis: `firmware/Juma PA-100D <VERSION>.hex`. Die Version kommt aus `juma-pa100.h`
+(`VERSION`). Das Skript
 
 - kompiliert alle Module mit `-mcpu=30F6014A -Wall`,
 - linkt mit `juma-trx2.gld` (bootloader-spezifisch: Code ab 0x100, Programmspeicher unterhalb 0x17D00),
@@ -403,7 +405,7 @@ nicht getestet.
 | `juma-pa100.h`, `pa100_eeprom.h` | Hardware-Definitionen, EEPROM-Strukturen |
 | `juma-trx2.gld` | Linker-Skript für den Ingenia-Bootloader |
 | `build-xc16.sh` | Build-Skript für XC16 |
-| `firmware/Juma PA-100D v4.02a Build *-DL4JC.hex` | DL4JC-Builds (die höchste Build-Nummer ist die aktuelle) |
+| `firmware/Juma PA-100D v4.03.hex` | Aktuelle Version |
 | `firmware/Juma PA-100D v4.01a Build 3 (original).hex` | Original v4.01a Build 3 (zum Zurückgehen) |
 | `tools/ingenia/ibl_dspiclist.xml` | Gerätedatei für den Ingenia-Loader |
 | `tools/juma-flash.py` | Serieller Firmware-Loader (Alternative zu Ingenia) |
@@ -432,7 +434,7 @@ nicht getestet.
 
 - Ursprüngliche Firmware: **Juha Niinikoski, OH2NLT**, und **Matti Hohtola, OH7SV** (JUMA)
 - Erweiterungen und Pflege bis v4.01a: **Adrian Ryan, 5B4AIY**
-- Änderungen v4.02a: **DL4JC**
+- Änderungen ab v4.03: **DL4JC**
 - `DataEEPROM.s`, `DataEEPROM.h`: Microchip Technology Inc. (Microchip-Lizenz, siehe Dateikopf)
 - Ingenia-dsPIC-Bootloader: Ingenia-CAT S.L., angepasst von OH2NLT
 

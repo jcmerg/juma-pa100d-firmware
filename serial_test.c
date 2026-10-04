@@ -412,7 +412,7 @@ void serial_test(void)
 
 			case 'E':	// Dump System & User Settings
 // System Calibration Settings
-				printf("\n\r%33s\n\r%7sFirmware: %s Build: %s\n\r%33s", "SYSTEM CALIBRATION SETTINGS", " ", VERSION, BUILD_NUMBER, dividing_line);
+				printf("\n\r%33s\n\r%7sFirmware: %s - DL4JC\n\r%33s", "SYSTEM CALIBRATION SETTINGS", " ", VERSION, dividing_line);
 				printf("Battery Voltage Factor : %-4d\n\r", cal.calval.batt_mult);
 				printf("PA Current Factor      : %-4d\n\r", cal.calval.id_mult);
 				printf("RF Power Meter Factor  : %-4d\n\r", cal.calval.fwd_pwr_mult);

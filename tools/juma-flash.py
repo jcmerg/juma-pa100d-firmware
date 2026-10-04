@@ -244,7 +244,7 @@ def verify(ldr, rows, present):
 
 def main():
     ap = argparse.ArgumentParser(description="Flash JUMA firmware through the Ingenia dsPIC boot loader.")
-    ap.add_argument("hexfile", help="firmware HEX file, e.g. 'firmware/Juma PA-100D v4.02a Build 5-DL4JC.hex'")
+    ap.add_argument("hexfile", help="firmware HEX file, e.g. 'firmware/Juma PA-100D v4.03.hex'")
     ap.add_argument("-p", "--port", help="serial port, e.g. COM3 or /dev/ttyUSB0 (omit to list ports)")
     ap.add_argument("-b", "--baud", type=int, default=115200, help="baud rate (default 115200)")
     ap.add_argument("--wait", type=float, default=60, help="seconds to wait for the boot loader (default 60)")

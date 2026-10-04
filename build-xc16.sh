@@ -1,14 +1,13 @@
 #!/bin/sh
 # Build the PA-100D firmware with MPLAB XC16 (macOS, Apple Silicon via Rosetta).
-# Output: "firmware/Juma PA-100D <VERSION> Build <BUILD>.hex". The original C30 HEX is not touched.
+# Output: "firmware/Juma PA-100D <VERSION>.hex". The original C30 HEX is not touched.
 set -e
 cd "$(dirname "$0")"
 X=${XC16:-/Applications/microchip/xc16/v2.10}
 CC="arch -x86_64 $X/bin/xc16-gcc"
 OUT=build
 VERSION=$(sed -n 's/^#define VERSION[[:space:]]*"\(.*\)".*/\1/p' juma-pa100.h | tr -d '\r')
-BUILD=$(sed -n 's/^#define BUILD_NUMBER[[:space:]]*"\(.*\)".*/\1/p' juma-pa100.h | tr -d '\r')
-NAME="firmware/Juma PA-100D $VERSION Build $BUILD.hex"
+NAME="firmware/Juma PA-100D $VERSION.hex"
 mkdir -p $OUT firmware
 for f in adc12 juma-pa100 lcd-trx2 serial_pa100 serial_test service timers_pwm tmr5delay traps uart; do
 	$CC -mcpu=30F6014A -x c -c "$f.c" -o "$OUT/$f.o" -g -Wall
