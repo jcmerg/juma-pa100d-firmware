@@ -1,3 +1,4 @@
 build/
 Calibration Settings - *.txt
 .DS_Store
+__pycache__/

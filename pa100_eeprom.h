@@ -62,7 +62,8 @@ struct extval
 									// then stored as F-Sense (Xiegu) or KX2/KX3 (HR50) in defval.bsel_mode, which the original
 									// firmware can use safely.
 	int beep_tone;					// Beep tones: 0 = JUMA, 1 = RS-928 (2300 - 2800Hz, see beep() in timers_pwm.c)
-	int spare[2];					// Reserved, 0
+	unsigned int cfg_csum;			// Checksum of the configuration block that bsel_ext belongs to, 0 = unknown
+	int spare[1];					// Reserved, 0
 	unsigned int e_csum;			// Checksum
 	};
 

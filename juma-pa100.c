@@ -646,6 +646,23 @@
  - F-Sense: the low frequency test at the start of a transmission ends with the first evaluated sample set. With a
    modulated signal it turned RF off and on with every sample set for 200mS, and the relays chattered.
  - Serial test 'G' (F-Sense test) also shows the lowest and highest sample of each set, and clean/mod.
+ v4.05 - DL4JC - 04/OCT/2026 (code review)
+ - The timing test pin was toggled with 'MAIN_TEST = !MAIN_TEST', a read-modify-write of the whole LATB. If tx_guard()
+   turned TX_ON (LATB4) off in the interrupt between the read and the write, TX_ON was switched on again for up to 1mS.
+   Now a single btg instruction.
+ - set_relays() only waited for the PA relays to release if TX_ON was still on at the band change. If tx_guard() had
+   just turned it off (filter mismatch, KEY released), the filter relays were switched while the PA relays were still
+   releasing. The interrupt now counts the time since TX_ON was on (tx_off_ms), and the filter relays are switched
+   RELAY_SETTLE mS after that at the earliest, with TX held off meanwhile.
+ - F-Sense: a modulated signal may also select a lower band if its highest sample is below 2/3 of the lowest frequency
+   of the current filter, e.g. 20m to 40m with SSB. The debug output shows 'far' in that case.
+ - save_defval() no longer changes Band_Select_Mode during the EEPROM write; the substitute value for the original
+   firmware is only used in the stored copy.
+ - The extension block stores the checksum of the configuration block. If the configuration has been saved since,
+   e.g. by the original firmware, the Xiegu/HR50 mode in the extension block is out of date and is not used.
+ - Service menu: if saving is cancelled, the extension block (Beep Tone) is read back as well.
+ - KX2/KX3 mode: the time-out for an incomplete FA message never applied, as the timer was set again before the test
+   (also in v4.01a). A stale partial message is now dumped before a new character is added.
 */
 
 #include <stdio.h>
@@ -724,6 +741,8 @@ extern volatile int band_bins[];						// Found samples
 extern volatile int freq_sample_ctr;					// Sample counter for F-SENSE mode
 extern volatile unsigned int fs_min, fs_max;	// Spread of the F-Sense sample set, see eval_band()
 extern volatile int fsense_evaluated;			// F-Sense sample set evaluated in this transmission, see tx_guard()
+extern volatile unsigned int tx_off_ms;			// mS since TX_ON was last on, see tx_guard()
+extern unsigned int filter_lower(int band);		// Lowest input frequency (kHz) of the filter for a band, see timers_pwm.c
 extern volatile int freq_ctr;						// Frequency counter averaging counter
 
 // External Data
@@ -1286,23 +1305,28 @@ void save_defval(void)
 	{
 	int i;
 	int mode = Band_Select_Mode;
+	unsigned int word;
+	int mode_idx = ((char *)&eeprom.defval.bsel_mode - (char *)&eeprom.defval) / 2;	// Word index of bsel_mode
 
 	ext.extval.bsel_ext = (mode == XIEGU) ? BSEL_EXT_XIEGU : (mode == HR50) ? BSEL_EXT_HR50 : BSEL_EXT_NONE;
-
-	if(mode == XIEGU) Band_Select_Mode = FREQ_SENSE;	// Value stored in the original configuration block
-	if(mode == HR50) Band_Select_Mode = ELECRAFT_KX3;
 
 	Cfg_Checksum = 0;
 
 	for(i = 0; i < (sizeof(struct defval) / 2); i++)
 		{
-		if(i < ((sizeof(struct defval) / 2) - 1)) Cfg_Checksum = crc_16(eeprom.storage[i], Cfg_Checksum);
+		word = eeprom.storage[i];
+// The mode is substituted only in the stored copy. Previously Band_Select_Mode itself was changed during the whole write,
+// and tx_guard() in the interrupt saw the wrong mode for approx. 150mS. DL4JC
+		if(i == mode_idx) word = (mode == XIEGU) ? FREQ_SENSE : (mode == HR50) ? ELECRAFT_KX3 : mode;
+
+		if(i == ((sizeof(struct defval) / 2) - 1)) word = Cfg_Checksum;	// The last word is the checksum
+		else Cfg_Checksum = crc_16(word, Cfg_Checksum);
 
  		EraseEE(EEPAGE, ((2 * i) + EEDEF), WORD);
-		WriteEE((int *)&(eeprom.storage[i]), EEPAGE, ((2 * i) + EEDEF), WORD);	// EEPROM Address 8 high bits, address + physical EEPROM start 16 low bits
+		WriteEE((int *)&word, EEPAGE, ((2 * i) + EEDEF), WORD);	// EEPROM Address 8 high bits, address + physical EEPROM start 16 low bits
 		}
 
-	Band_Select_Mode = mode;			// Restore the actual mode,
+	ext.extval.cfg_csum = Cfg_Checksum;	// Ties bsel_ext to this configuration block, see load_ext_modes(),
 	save_extval();						// and save the extension block, which holds further user settings. DL4JC
 	}
 
@@ -1362,6 +1386,11 @@ unsigned int read_extval(void)
 // Restore the actual band select mode after reading the configuration and extension blocks, see save_defval().
 void load_ext_modes(void)
 	{
+// If the configuration block has been saved since, e.g. by the original firmware with F-Sense or KX2/KX3 chosen on
+// purpose, bsel_ext is out of date and is not used. 0 = blocks saved by v4.03/v4.04, which did not store the checksum.
+	if(ext.extval.cfg_csum && (ext.extval.cfg_csum != Cfg_Checksum))
+		ext.extval.bsel_ext = BSEL_EXT_NONE;
+
 	if((Band_Select_Mode == FREQ_SENSE) && (ext.extval.bsel_ext == BSEL_EXT_XIEGU))
 		Band_Select_Mode = XIEGU;
 
@@ -1628,6 +1657,9 @@ void serial_kx3(void)				// Serial Data Handler
 		{
 		c = getch();								// Get character from UART
 
+		if(cmd_buf_idx && !cmd_timeout)				// The rest of the previous message did not arrive in time, so dump it.
+			clear_buffer();							// (Previously the timer was set again before the test, which then
+													// never applied. DL4JC)
 		if(cmd_buf_idx == 0 && c != 'F')			// Not a valid start of message
 			return;
 
@@ -2473,7 +2505,11 @@ void save_settings(int prompt, int mode)
 		}
 	else
 		{
-		if(mode & 1) read_calval();			// Restore previous System Calibration Settings
+		if(mode & 1)						// Restore previous System Calibration Settings,
+			{
+			read_calval();
+			read_extval();					// and the Beep Tone service setting in the extension block. DL4JC
+			}
 
 		if(mode & 2)						// Restore previous User Configuration Settings
 			{
@@ -2572,7 +2608,10 @@ void reset_fsense(void)						// Clear F-sense
  amplitude is small: e.g. 14MHz two-tone is measured as approx. 11MHz in every sample. At the start of a transmission
  this selected a lower band, i.e. a filter below the transmitted frequency. A lower band is therefore only selected from
  a clean carrier (TUNE, CW), whose samples lie within FS_SPREAD of each other; modulated signals spread more. A higher
- band, the safe direction for the amplifier, and any band while the band is unknown, are still selected at once. DL4JC
+ band, the safe direction for the amplifier, and any band while the band is unknown, are still selected at once.
+ A modulated signal may also select a lower band if even its highest sample is far below the current filter, i.e. below
+ 2/3 of its lowest frequency: the highest sample was measured at approx. 85% (two-tone) to 100% (noise) of the real
+ frequency, while a real band change down is usually a much larger step, e.g. 20m to 40m. (v4.05) DL4JC
 */
 #define FS_SPREAD	5				// Clean carrier: highest - lowest sample <= highest / 2^FS_SPREAD (approx. 3%)
 
@@ -2580,13 +2619,14 @@ void eval_band()	// Improved F-sense - A.Ryan - 5B4AIY - 30/APR/2014
 	{
 	static int last_band;					// Initialised to zero by default
 	int i;
-	int clean;
+	int clean, far;
 
 	if(!key) last_band = 0;					// Reset last_band in RX mode
 
 	if(!freq_sample_ctr)					// Decide when we have complete set of measurements available
 		{
 		clean = (fs_max >= fs_min) && ((fs_max - fs_min) <= (fs_max >> FS_SPREAD));
+		far = (fs_max >= fs_min) && (fs_max < (unsigned int)(((unsigned long)filter_lower(Current_Band) * 2UL) / 3UL));
 
 		if(fsense_tst)						// Debug Mode - Can be invoked from Serial Test Suite
 			{
@@ -2596,7 +2636,7 @@ void eval_band()	// Improved F-sense - A.Ryan - 5B4AIY - 30/APR/2014
 				printf(_2I, band_bins[i]);
 				} while (++i < 10);
 
-			if(fs_max) printf("%5u %5u %s", fs_min, fs_max, clean ? "clean" : "mod");	// Sample spread, kHz. DL4JC
+			if(fs_max) printf("%5u %5u %s", fs_min, fs_max, clean ? "clean" : far ? "far" : "mod");	// Sample spread, kHz. DL4JC
 
 			printf(New_Line);
 			}
@@ -2610,7 +2650,7 @@ void eval_band()	// Improved F-sense - A.Ryan - 5B4AIY - 30/APR/2014
 				} while (--i);
 
 			if((last_band < i)
-				&& ((i > Current_Band) || clean || (Current_Band == NOT_KNOWN) || (Current_Band == OUT_OF_BAND)))
+				&& ((i > Current_Band) || clean || far || (Current_Band == NOT_KNOWN) || (Current_Band == OUT_OF_BAND)))
 				{
 				last_band = i;
 				Current_Band = i;			// Set band
@@ -2715,6 +2755,12 @@ void set_relays(void)
 			}
 
 		if(release_wait && relay_settle) return;	// Still waiting for the PA relays to release.
+
+		if(tx_off_ms < RELAY_SETTLE)	// RF was turned off only recently, e.g. by tx_guard() in the interrupt, and the
+			{							// PA relays may still be releasing: wait, and hold TX off meanwhile.
+			relay_settle = RELAY_SETTLE;
+			return;
+			}
 
 		release_wait = FALSE;
 		relay_band = Current_Band;
@@ -3373,7 +3419,10 @@ int main(void)
  Amps		6.2
  Temp		5.8
 */ 
-		MAIN_TEST = !MAIN_TEST;			// Timing test J19-5 Check with oscilloscope for reversals
+		__builtin_btg((unsigned int *)&LATB, 1);	// MAIN_TEST, timing test J19-5. Check with oscilloscope for reversals.
+										// A single btg instruction: 'MAIN_TEST = !MAIN_TEST' compiled to a read-modify-write
+										// of the whole LATB, which could switch TX_ON (LATB4) on again just after tx_guard()
+										// had turned it off in the 1mS interrupt. DL4JC
 		main_heartbeat = 0;				// Main loop is running, see tx_guard() in timers_pwm.c
 		key = KEY;						// Copy I/O bit to status flag, this uses less code than using the I/O bit directly.
 

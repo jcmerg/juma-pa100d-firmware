@@ -209,6 +209,10 @@ class Loader:
         return words
 
     def write_row(self, pc, data):
+        """Write one row. Only a NACK is retried: the boot loader sends it after the whole frame, when the check byte
+        was wrong, and then waits for the next command. Without an answer a byte may have been lost, and the boot
+        loader is still waiting for the rest of the frame (iBL.s waits very long for each byte). Sending the frame
+        again would then be read partly as commands, so stop instead: the device has to be restarted."""
         frame = bytearray(addr_bytes(pc))
         frame.append(len(data) + 1)
         frame += data
@@ -218,9 +222,12 @@ class Loader:
             ans = self.read_exact(1)
             if ans == bytes([ACK]):
                 return
-            time.sleep(0.1)
+            if ans != bytes([NACK]):
+                raise FlashError(f"no answer when writing 0x{pc:06X} ({ans.hex() or 'timeout'}). Disconnect the power "
+                                 "supply, start the boot loader again and flash again (the boot loader is not affected).")
+            time.sleep(0.05)
             self.ser.reset_input_buffer()
-        raise FlashError(f"write error at 0x{pc:06X} (answer {ans.hex() or 'none'})")
+        raise FlashError(f"write error at 0x{pc:06X} (NACK 3 times). Try a lower baud rate.")
 
     def run(self):
         self.ser.write(bytes([C_USER]))

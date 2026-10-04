@@ -94,6 +94,7 @@ volatile unsigned int main_heartbeat = 0;	// mS since the main or service loop l
 volatile int isr_swr_trip = FALSE;			// Set here, transferred to the alarms in check_alarms()
 volatile int filter_mismatch = FALSE;		// Input frequency above the selected filter, reset by the main loop
 volatile int fsense_evaluated = FALSE;		// F-Sense sample set evaluated in this transmission, set by eval_band()
+volatile unsigned int tx_off_ms = 0;		// mS since TX_ON was last on, see set_relays()
 volatile unsigned int relay_settle = 0;		// Relay settling timer, mS, set in set_relays()
 
 #define MISMATCH_TICKS	2			// mS that the input frequency must be above the selected filter
@@ -115,7 +116,7 @@ static unsigned int filter_limit(int band)
 	}
 
 // Lowest input frequency (kHz) for the low-pass filter selected for a band, 0 = no limit.
-static unsigned int filter_lower(int band)
+unsigned int filter_lower(int band)
 	{
 	if(band >= 1 && band <= 4) return band_limits[band - 1];
 	if(band == 5 || band == 6) return band_limits[4];
@@ -233,6 +234,9 @@ static void tx_guard(void)
 // Force RF off if required
 	if((key_off_count >= KEY_OFF_TICKS) || isr_swr_trip || filter_mismatch || (alarms & ALARM_MASK) || (main_heartbeat >= MAIN_TIMEOUT))
 		TX_ON = OFF;
+// Time since RF off, so that set_relays() never switches the filter relays while the PA relays are still releasing
+	if(TX_ON) tx_off_ms = 0;
+	else if(tx_off_ms < 0xFFFF) tx_off_ms++;
 	}
 
 // Simulate encoder with UP / DOWN buttons
