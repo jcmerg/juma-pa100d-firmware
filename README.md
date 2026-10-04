@@ -214,7 +214,7 @@ The boot loader source code (`iBL.s`, modified for JUMA by OH2NLT) is in [`bootl
 ## RS-928 clone
 
 This firmware also runs on the **RS-928**, a PA-100D clone whose hardware is practically the same as
-the original. Tested by DL4JC. Two things differ:
+the original. Two things differ:
 
 ### First installation: PICkit through header J19
 

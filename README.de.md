@@ -216,7 +216,7 @@ laden. Der Quellcode des Bootloaders (`iBL.s`, von OH2NLT für JUMA angepasst) l
 ## RS-928-Clone
 
 Diese Firmware läuft auch auf dem **RS-928**, einem Nachbau der PA-100D, dessen Hardware praktisch
-dem Original entspricht. Getestet von DL4JC. Zwei Dinge sind anders:
+dem Original entspricht. Zwei Dinge sind anders:
 
 ### Erstinstallation: PICkit über den Header J19
 
