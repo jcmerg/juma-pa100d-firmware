@@ -2800,6 +2800,8 @@ int main(void)
 	IPC0 = 0x5444;					// Set tone generator (TMR1) priority higher than others
 	IPC1bits.T2IP = 5;				// The tone generator is TMR2. Its priority must be above the 1mS TMR3 interrupt (4),
 									// which now includes the A-D conversions, otherwise the tones would be distorted.
+	IPC2bits.U1RXIP = 6;			// The UART receive interrupt is very short, so give it the highest priority to avoid
+									// receive FIFO overruns while the other interrupts are running.
 	init_timers_pwm();				// Setup PWM & tone generators
 
 // Init Main Board SPI traffic

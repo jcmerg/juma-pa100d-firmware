@@ -78,23 +78,33 @@ const unsigned int baud_rates[] = {			// Divisor = (7,3728,000 / (Baud Rate * 16
 
 // UART1 IRQ service
 // Queue character
+/*
+ The interrupt is only generated when a character is received. Previously only one character was read per interrupt,
+ so if two characters arrived while the interrupt was held off, one stayed in the 4 character receive FIFO. These
+ accumulated until the FIFO overflowed. On an overrun the UART stops receiving, no further interrupt occurs, and so OERR
+ was never cleared: reception was dead until power off, although transmission still worked. Now the whole FIFO is
+ read on every interrupt, and kbhit() also clears an overrun. DL4JC - 04/OCT/2026
+*/
 void __attribute__((interrupt, auto_psv)) _U1RXInterrupt(void)	// Put received character to RX queue
 	{
   	unsigned char rx;
 
-  	rx = U1RXREG;						// Data read
+// This is not automatic in 30F6014 UART
+	IFS0bits.U1RXIF = 0;				// Reset IRQ flag first, so that a character arriving now generates a new interrupt
 
-  	if((unsigned char)(rx_buf_in_idx + 1) != rx_buf_out_idx)	// Check for overrun
-  		{
-  		rx_buffer[rx_buf_in_idx++] = rx;// Place just received character in queue
-    	}
+	while(U1STAbits.URXDA)				// Read every character in the receive FIFO
+		{
+	  	rx = U1RXREG;					// Data read
+
+	  	if((unsigned char)(rx_buf_in_idx + 1) != rx_buf_out_idx)	// Check for overrun
+	  		{
+	  		rx_buffer[rx_buf_in_idx++] = rx;// Place just received character in queue
+	    	}
 // Else reject character
+		}
 // Check & handle possible errors
 	if(U1STAbits.OERR == 1)				// OERR is blocking UART, should not happen but...
 		U1STAbits.OERR = 0;				// Reset overrun error if occurred
-
-// This is not automatic in 30F6014 UART
-	IFS0bits.U1RXIF = 0;				// Reset IRQ flag
 	}
 
 // UART1 init
@@ -129,6 +139,9 @@ void putch(unsigned char c)
 // IRQ based RX queue check
 unsigned char kbhit(void)
 	{
+	if(U1STAbits.OERR == 1)				// An overrun stops reception without a further interrupt,
+		U1STAbits.OERR = 0;				// so clear it here as well.
+
   	return(unsigned char)((rx_buf_in_idx - (unsigned char)(rx_buf_out_idx + 1)));	// Return with number of available characters
 	}
 
