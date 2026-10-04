@@ -14,5 +14,6 @@ done
 $CC -mcpu=30F6014A -c DataEEPROM.s -o "$OUT/DataEEPROM.o" -Wa,-I"$X/support/dsPIC30F/inc"
 $CC -mcpu=30F6014A "$OUT"/*.o -o "$OUT/pa100.elf" -Wl,--script=juma-trx2.gld,--heap=500,-Map="$OUT/pa100.map",--report-mem | grep -E 'Total'
 arch -x86_64 "$X/bin/xc16-bin2hex" "$OUT/pa100.elf"
+rm -f "Juma PA-100D $BUILD.hex"
 cp "$OUT/pa100.hex" "Juma PA-100D $BUILD.hex"
 echo "OK: Juma PA-100D $BUILD.hex"
