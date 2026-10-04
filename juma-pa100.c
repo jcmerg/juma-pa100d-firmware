@@ -581,7 +581,8 @@
  display screen is still displayed. It vanishes once the display page is changed. This update fixes this anomaly and now if the configuration is
  changed and saved the starting page is shown. A.Ryan - 5B4AIY - 26/AUG/2023
  ---------------------------------- DL4JC Modifications ----------------------------------
- Build 4-DL4JC	The EEPROM layout is unchanged, there is no checksum error on loading.
+ 4.02a	Based on v4.01a Build 3.
+ Build 1-DL4JC	The EEPROM layout is unchanged, there is no checksum error on loading.
  TX protection:
  - TX_ON is forced off in the User Configuration mode. Previously it stayed in the state it was in when the mode was entered.
  - The trap handlers now force TX_ON off and run the fan at high speed before anything else. (See safe_state() in traps.c)
