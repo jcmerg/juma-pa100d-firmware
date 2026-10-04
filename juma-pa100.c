@@ -615,6 +615,8 @@
  - New EEPROM extension block at 0xF100 with its own checksum for settings added by DL4JC (see pa100_eeprom.h). The
    original configuration and calibration blocks are unchanged, so there is no checksum error when loading this
    firmware, and the original firmware can be loaded again without losing the calibration.
+ - The Xiegu band select mode is stored as F-Sense in the original configuration block, with Xiegu in the extension
+   block. If the original firmware is loaded again, it uses F-Sense instead of an unknown mode value.
  Build 2-DL4JC
  - F-Sense mode only: if, within the first 200mS of a transmission, the input frequency is below the selected filter for
    3mS, RF is also turned off until the band has been measured. This avoids poorly suppressed harmonics on the first
@@ -1092,6 +1094,7 @@ union
 void set_ext_defaults(void);			// Extension block functions, defined after save_defval()
 void save_extval(void);
 unsigned int read_extval(void);
+void load_ext_modes(void);
 
 /*
  CRC16 is a simple 16-bit cyclic redundancy checksum that provides a more robust method of checking data than many other methods.
@@ -1248,9 +1251,19 @@ void set_factory_defaults(void)
 	}
 
 // Save defaults
+/*
+ Band select modes that the original firmware does not know (Xiegu) are stored as F-Sense, with the actual mode in the
+ extension block. If the original firmware is loaded again it then uses F-Sense, which works with any transceiver and
+ protects the filters. See load_ext_modes(). DL4JC
+*/
 void save_defval(void)
 	{
 	int i;
+	int mode = Band_Select_Mode;
+
+	ext.extval.bsel_ext = (mode == XIEGU) ? BSEL_EXT_XIEGU : BSEL_EXT_NONE;
+
+	if(mode == XIEGU) Band_Select_Mode = FREQ_SENSE;	// Value stored in the original configuration block
 
 	Cfg_Checksum = 0;
 
@@ -1262,7 +1275,8 @@ void save_defval(void)
 		WriteEE((int *)&(eeprom.storage[i]), EEPAGE, ((2 * i) + EEDEF), WORD);	// EEPROM Address 8 high bits, address + physical EEPROM start 16 low bits
 		}
 
-	save_extval();						// The extension block holds further user settings. DL4JC
+	Band_Select_Mode = mode;			// Restore the actual mode,
+	save_extval();						// and save the extension block, which holds further user settings. DL4JC
 	}
 
 // Extension block defaults
@@ -1308,13 +1322,20 @@ unsigned int read_extval(void)
 		}
 
 	if((checksum != Ext_Checksum) || (ext.extval.magic != EXT_MAGIC) || (ext.extval.version != EXT_VERSION)
-		|| (FSense_QSK < 0) || (FSense_QSK > 1))
+		|| (FSense_QSK < 0) || (FSense_QSK > 1) || (ext.extval.bsel_ext < BSEL_EXT_NONE) || (ext.extval.bsel_ext > BSEL_EXT_XIEGU))
 		{
 		set_ext_defaults();
 		return TRUE;
 		}
 
 	return FALSE;
+	}
+
+// Restore the actual band select mode after reading the configuration and extension blocks, see save_defval().
+void load_ext_modes(void)
+	{
+	if((Band_Select_Mode == FREQ_SENSE) && (ext.extval.bsel_ext == BSEL_EXT_XIEGU))
+		Band_Select_Mode = XIEGU;
 	}
 
 // Read defaults
@@ -2263,6 +2284,7 @@ void save_settings(int prompt, int mode)
 			{
 			read_defval();
 			read_extval();
+			load_ext_modes();
 			}
 
 		flag = FALSE;
@@ -2988,6 +3010,8 @@ int main(void)
 	w = read_defval();
 
 	if(read_extval()) save_extval();	// Extension block missing (first start of this firmware) or invalid: save the defaults.
+
+	load_ext_modes();					// Restore a band select mode stored in the extension block (Xiegu)
 
  	if((Serial_Test_Mode == SERIAL_TEST) && (Band_Select_Mode > 2))
 		printf(EEPROM_Chksum, checksum_msg[y], checksum_msg[w], fd_counter);

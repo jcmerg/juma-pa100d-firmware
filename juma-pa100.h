@@ -427,6 +427,8 @@
 #define EEEXT				0xF100		// DL4JC extension block, not used by the original firmware
 #define EXT_MAGIC			0x4A43		// 'JC'
 #define EXT_VERSION			1
+#define BSEL_EXT_NONE		0			// ext.extval.bsel_ext values
+#define BSEL_EXT_XIEGU		1
 
 // PA100 board I/O definitions
 // Port A Switches

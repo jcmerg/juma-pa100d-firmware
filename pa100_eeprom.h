@@ -58,7 +58,9 @@ struct extval
 	unsigned int magic;				// EXT_MAGIC
 	unsigned int version;			// EXT_VERSION
 	int fsense_qsk;					// F-Sense QSK, 0 = Off, 1 = On
-	int spare[4];					// Reserved, 0
+	int bsel_ext;					// Band select mode unknown to the original firmware: 0 = none, 1 = Xiegu. The mode is then
+									// stored as F-Sense in defval.bsel_mode, which the original firmware can use safely.
+	int spare[3];					// Reserved, 0
 	unsigned int e_csum;			// Checksum
 	};
 
