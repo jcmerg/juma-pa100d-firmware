@@ -15,7 +15,9 @@ EXTERN(__resetALT)
 MEMORY
 {
   data  (a!xr) : ORIGIN = 0x800,    LENGTH = 8096
-  program (xr) : ORIGIN = 0x100,    LENGTH = ((48K * 2) - 0x100)
+  program (xr) : ORIGIN = 0x100,    LENGTH = (0x17D00 - 0x100)
+/* program ends below the ingenia boot loader at 0x17D00 - 0x17FFE (see ibl_dspiclist.xml / iBL.s), so that the
+   linker can never place code or constants there. Previously LENGTH was ((48K * 2) - 0x100). DL4JC */
   reset        : ORIGIN = 0,        LENGTH = (4)
   ivt          : ORIGIN = 0x04,     LENGTH = (62 * 2)
   aivt         : ORIGIN = 0x84,     LENGTH = (62 * 2)
