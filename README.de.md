@@ -2,7 +2,8 @@
 
 Deutsch | [English](README.md)
 
-Überarbeitete Firmware für die KW-Endstufe **JUMA PA-100D** (dsPIC30F6014A). Grundlage ist die
+Überarbeitete Firmware für die KW-Endstufe **JUMA PA-100D** (dsPIC30F6014A, läuft auch auf dem
+[RS-928-Clone](#rs-928-clone)). Grundlage ist die
 **v4.01a Build 3** von Adrian Ryan, 5B4AIY. Die ursprüngliche Firmware stammt von Juha Niinikoski,
 OH2NLT, und Matti Hohtola, OH7SV.
 
@@ -22,6 +23,7 @@ Möglichkeit, mit dem aktuellen Microchip-Compiler **XC16** zu bauen.
 - [Bedienung – neue Einstellungen](#bedienung--neue-einstellungen)
 - [EEPROM und Kompatibilität](#eeprom-und-kompatibilität)
 - [Flashen mit dem Ingenia-Bootloader](#flashen-mit-dem-ingenia-bootloader)
+- [RS-928-Clone](#rs-928-clone)
 - [Test nach dem Update](#test-nach-dem-update)
 - [Firmware bauen](#firmware-bauen)
 - [Aufbau des Repos](#aufbau-des-repos)
@@ -209,6 +211,47 @@ laden. Der Quellcode des Bootloaders (`iBL.s`, von OH2NLT für JUMA angepasst) l
 
 ---
 
+## RS-928-Clone
+
+Diese Firmware läuft auch auf dem **RS-928**, einem Nachbau der PA-100D, dessen Hardware praktisch
+dem Original entspricht. Getestet von DL4JC. Zwei Dinge sind anders:
+
+### Erstinstallation: PICkit über den Header J19
+
+Der RS-928 wird mit eigener Firmware (v1.05q) ausgeliefert, **ohne den Ingenia-Bootloader** und ohne
+nutzbare Fernsteuerung. Das serielle Update funktioniert deshalb erst nach einem einmaligen
+Programmierschritt:
+
+1. Mit einem **PICkit** (oder einem anderen dsPIC-Programmer) am Header **J19** der Controllerplatine
+   [`bootloader/Bootldr_Juma-PA100_v104.hex`](bootloader/Bootldr_Juma-PA100_v104.hex) in den
+   dsPIC30F6014A schreiben. Die Datei ist ein komplettes Chip-Abbild: JUMA-Firmware v1.04,
+   Ingenia-Bootloader und Konfigurationsbits.
+2. Prüfen, ob die PA mit der JUMA-Firmware startet.
+3. Danach diese Firmware über die serielle Schnittstelle mit Ingenia laden, genau wie unter
+   [Flashen mit dem Ingenia-Bootloader](#flashen-mit-dem-ingenia-bootloader) beschrieben (OPER + PWR).
+
+Die Original-Firmware des Clones wird in Schritt 1 überschrieben. Wer sie eventuell zurückhaben
+möchte, liest den Chip vorher mit dem Programmer aus und hebt die Datei auf.
+
+### Buchsen andersherum belegt
+
+Beim RS-928 sind **Spitze und Ring gegenüber der PA-100D vertauscht** – an der **seriellen Buchse und
+an der PTT-Buchse**. Der Schaft ist bei beiden Masse.
+
+| Sub-D-Pin (PC) | Signal | PA-100D | RS-928 |
+|---|---|---|---|
+| 3 | TxD, in die PA | Spitze | **Ring** |
+| 2 | RxD, aus der PA | Ring | **Spitze** |
+| 5 | Masse | Schaft | Schaft |
+
+An der **PTT-Buchse** liegt beim RS-928 ebenfalls auf dem Ring, was die PA-100D auf der Spitze hat,
+und umgekehrt. Das vor dem ersten Senden prüfen, sonst tastet die Endstufe nicht oder dauerhaft.
+Ein vertauschtes serielles Kabel führt nur zu Stille (keine Daten, keine Erkennung in Ingenia).
+
+Hintergrund: [RS-928-Test im OARC-Wiki](https://wiki.oarc.uk/rs928ampreview).
+
+---
+
 ## Test nach dem Update
 
 Zuerst mit Dummy-Load und kleiner Leistung.
@@ -278,7 +321,7 @@ nicht getestet.
 | `Juma PA-100D v4.02a Build *-DL4JC.hex` | Aktueller Build |
 | `Juma PA-100D.hex` | Original v4.01a Build 3 (zum Zurückgehen) |
 | `tools/ingenia/ibl_dspiclist.xml` | Gerätedatei für den Ingenia-Loader |
-| `bootloader/` | Bootloader-Quellcode und HEX (für Programmer) |
+| `bootloader/` | Bootloader-Quellcode und HEX; `Bootldr_Juma-PA100_v104.hex` = komplettes Abbild für die Erstinstallation per Programmer (RS-928) |
 | `Juma PA-100D.mcp/.mcw/.mcs` | Originales MPLAB-8-Projekt |
 
 ---

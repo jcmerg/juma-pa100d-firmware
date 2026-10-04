@@ -2,7 +2,8 @@
 
 [Deutsch](README.de.md) | English
 
-Modified firmware for the **JUMA PA-100D** HF linear amplifier (dsPIC30F6014A), based on
+Modified firmware for the **JUMA PA-100D** HF linear amplifier (dsPIC30F6014A, also runs on the
+[RS-928 clone](#rs-928-clone)), based on
 **v4.01a Build 3** by Adrian Ryan, 5B4AIY. The original firmware was written by Juha Niinikoski,
 OH2NLT, and Matti Hohtola, OH7SV.
 
@@ -22,6 +23,7 @@ Microchip **XC16** compiler.
 - [Operation – new settings](#operation--new-settings)
 - [EEPROM and compatibility](#eeprom-and-compatibility)
 - [Flashing with the Ingenia boot loader](#flashing-with-the-ingenia-boot-loader)
+- [RS-928 clone](#rs-928-clone)
 - [Testing after an update](#testing-after-an-update)
 - [Building the firmware](#building-the-firmware)
 - [Repository layout](#repository-layout)
@@ -208,6 +210,46 @@ The boot loader source code (`iBL.s`, modified for JUMA by OH2NLT) is in [`bootl
 
 ---
 
+## RS-928 clone
+
+This firmware also runs on the **RS-928**, a PA-100D clone whose hardware is practically the same as
+the original. Tested by DL4JC. Two things differ:
+
+### First installation: PICkit through header J19
+
+The RS-928 ships with its own firmware (v1.05q), **without the Ingenia boot loader** and without a
+usable remote control. The serial update therefore only works after a one-off programming step:
+
+1. With a **PICkit** (or another dsPIC programmer) on header **J19** of the controller board, write
+   [`bootloader/Bootldr_Juma-PA100_v104.hex`](bootloader/Bootldr_Juma-PA100_v104.hex) to the
+   dsPIC30F6014A. This file is a complete chip image: the JUMA firmware v1.04, the Ingenia boot
+   loader and the configuration bits.
+2. Check that the PA starts with the JUMA firmware.
+3. Then load this firmware over the serial port with Ingenia, exactly as described in
+   [Flashing with the Ingenia boot loader](#flashing-with-the-ingenia-boot-loader) (OPER + PWR).
+
+The clone's original firmware is overwritten in step 1. If you might want it back, read the chip
+out with the programmer first and keep the file.
+
+### Jacks wired the other way round
+
+On the RS-928 **tip and ring are swapped** compared with the PA-100D – on the **serial jack and on
+the PTT jack**. The sleeve is ground on both.
+
+| Sub-D pin (PC) | Signal | PA-100D | RS-928 |
+|---|---|---|---|
+| 3 | TxD, into the PA | Tip | **Ring** |
+| 2 | RxD, out of the PA | Ring | **Tip** |
+| 5 | GND | Sleeve | Sleeve |
+
+On the **PTT jack** the RS-928 likewise has on the ring what the PA-100D has on the tip, and the
+other way round. Check this before the first transmission, otherwise the amplifier does not key or
+keys permanently. A swapped serial cable only results in silence (no data, no detection in Ingenia).
+
+Background: [RS-928 review in the OARC wiki](https://wiki.oarc.uk/rs928ampreview).
+
+---
+
 ## Testing after an update
 
 Use a dummy load and low power first.
@@ -275,7 +317,7 @@ this version.
 | `Juma PA-100D v4.02a Build *-DL4JC.hex` | Current build |
 | `Juma PA-100D.hex` | Original v4.01a Build 3 (to go back) |
 | `tools/ingenia/ibl_dspiclist.xml` | Device file for the Ingenia loader |
-| `bootloader/` | Boot loader source and HEX (for programmers) |
+| `bootloader/` | Boot loader source and HEX; `Bootldr_Juma-PA100_v104.hex` = complete image for a first installation with a programmer (RS-928) |
 | `Juma PA-100D.mcp/.mcw/.mcs` | Original MPLAB 8 project |
 
 ---
