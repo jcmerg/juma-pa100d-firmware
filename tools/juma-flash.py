@@ -166,27 +166,30 @@ class Loader:
         print("Switch the device off and start its boot loader (PA-100D: press and hold OPER, then press PWR).\n"
               "Waiting ...", flush=True)
         self.ser.reset_input_buffer()
+        answered = False
         end = time.monotonic() + wait
         while time.monotonic() < end:
             self.ser.write(bytes([ACK]) * 32)
             self.ser.flush()
             time.sleep(0.05)
-            if self.ser.in_waiting:
-                break
-        else:
-            raise FlashError("no answer from the boot loader")
-        time.sleep(0.2)
-        self.ser.reset_input_buffer()
-
-        for _ in range(3):
-            self.ser.write(bytes([C_VERSION]))
-            ver = self.read_exact(3)
-            if len(ver) == 3 and ver[2] == ACK:
-                return ver[0], ver[1]
-            time.sleep(0.1)
+            if not self.ser.in_waiting:
+                continue
+            # Something answered. It may also be the running firmware, e.g. in the serial test mode, so only
+            # a valid version answer counts. Otherwise keep waiting until the device starts its boot loader.
+            answered = True
+            time.sleep(0.2)
             self.ser.reset_input_buffer()
-        raise FlashError("boot loader found, but no valid version answer. "
-                         "Disconnect the device from the power supply and try again, or use a lower baud rate.")
+            for _ in range(2):
+                self.ser.write(bytes([C_VERSION]))
+                ver = self.read_exact(3)
+                if len(ver) == 3 and ver[2] == ACK:
+                    return ver[0], ver[1]
+                time.sleep(0.1)
+                self.ser.reset_input_buffer()
+        if answered:
+            raise FlashError("the device answers, but not as the boot loader. Is the firmware still running? "
+                             "Otherwise disconnect the power supply and try again, or use a lower baud rate.")
+        raise FlashError("no answer from the boot loader")
 
     def read_words(self, addrs, window=16):
         """Read program words. The read commands are sent in windows, so that the boot loader's
