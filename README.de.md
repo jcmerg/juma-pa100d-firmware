@@ -382,6 +382,7 @@ Das Skript findet XC16 am Standardort (macOS: `/Applications/microchip/xc16`, Li
 `/opt/microchip/xc16`) und nimmt die neueste installierte Version. Anderer Pfad:
 `XC16=/pfad/zu/xc16/v2.10 ./build-xc16.sh`. Unter Windows läuft das Skript in WSL mit der
 Linux-Version von XC16.
+macOS (Apple Silicon) und Linux (Debian 12, x86_64) erzeugen dieselbe HEX-Datei.
 
 **macOS mit Apple Silicon:** XC16 ist ein Intel-Programm und läuft unter Rosetta (das Skript ruft es
 mit `arch -x86_64` auf). Das Installationsprogramm bricht auf Apple Silicon kommentarlos ab; dann das

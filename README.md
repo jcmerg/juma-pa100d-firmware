@@ -375,6 +375,7 @@ The script finds XC16 in its default location (macOS: `/Applications/microchip/x
 `/opt/microchip/xc16`) and uses the newest installed version. Other location:
 `XC16=/path/to/xc16/v2.10 ./build-xc16.sh`. On Windows the script runs under WSL with the Linux
 version of XC16.
+macOS (Apple Silicon) and Linux (Debian 12, x86_64) produce the identical HEX file.
 
 **macOS on Apple Silicon:** XC16 is an Intel program and runs under Rosetta (the script calls it with
 `arch -x86_64`). The installer stops silently on Apple Silicon; start the inner installer directly:

@@ -3,7 +3,7 @@
 // Juha Niinikoski OH2NLT 22.11.2008
 
 // Processor header
-#include <p30f6014A.h>
+#include <p30F6014A.h>
 
 // Version Data
 #define VERSION				"v4.04"			// One version number per release, shown on the start-up screen (max. 6 characters)

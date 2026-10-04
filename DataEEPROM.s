@@ -40,7 +40,7 @@
 *
 **********************************************************************/
 
-.include "p30fxxxx.inc"
+.include "p30Fxxxx.inc"
 
 .equ    EE_WORD_ERASE_CODE, 0x4044
 .equ    EE_WORD_WRITE_CODE, 0x4004
