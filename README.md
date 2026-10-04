@@ -230,6 +230,13 @@ usable remote control. The serial update therefore only works after a one-off pr
    the PICkit (pin 1) goes to the framed pin of J19**. Instructions and files:
    [hermes-lite thread](https://groups.google.com/g/hermes-lite/c/breb9kSmeYc/m/xKfDIW6zEQAJ) by
    KD2NFC.
+
+   **Power during programming – the tricky part:**
+   - Supply the PA from its **own power supply**, not from the PICkit. In the PICkit software set the
+     target to **self-powered** (do not let the PICkit supply VDD).
+   - **Keep PWR pressed for the whole programming process.** The programmer holds the processor in
+     reset, so nothing can switch the power latch on; releasing PWR switches the PA off and aborts
+     the programming. (This differs from the later Ingenia update, see below.)
 2. Check that the PA starts with the JUMA firmware.
 3. Then load this firmware over the serial port with Ingenia, exactly as described in
    [Flashing with the Ingenia boot loader](#flashing-with-the-ingenia-boot-loader) (OPER + PWR).

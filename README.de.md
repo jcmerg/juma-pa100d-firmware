@@ -233,6 +233,13 @@ Programmierschritt:
    Pfeil auf dem PICkit (Pin 1) kommt auf den umrahmten Pin von J19**. Anleitung und Dateien:
    [hermes-lite-Thread](https://groups.google.com/g/hermes-lite/c/breb9kSmeYc/m/xKfDIW6zEQAJ) von
    KD2NFC.
+
+   **Versorgung beim Programmieren – der knifflige Teil:**
+   - Die PA über ihr **eigenes Netzteil** versorgen, nicht über den PICkit. In der PICkit-Software das
+     Ziel auf **self-powered** stellen (der PICkit darf VDD nicht liefern).
+   - **PWR während des gesamten Programmiervorgangs gedrückt halten.** Der Programmer hält den
+     Prozessor im Reset, deshalb kann nichts die Selbsthaltung einschalten; Loslassen schaltet die PA
+     aus und bricht das Programmieren ab. (Anders als später beim Update mit Ingenia, siehe unten.)
 2. Prüfen, ob die PA mit der JUMA-Firmware startet.
 3. Danach diese Firmware über die serielle Schnittstelle mit Ingenia laden, genau wie unter
    [Flashen mit dem Ingenia-Bootloader](#flashen-mit-dem-ingenia-bootloader) beschrieben (OPER + PWR).
