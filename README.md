@@ -89,10 +89,18 @@ The complete technical change history is in the comment header of `juma-pa100.c`
 
 User configuration, last page **"F-Sense QSK"**. The page only appears when *Auto Band Detect = F-Sense*.
 
-| Setting | Behaviour |
-|---|---|
-| **Off** (default) | On **every** transmission, TX is only enabled once F-Sense has measured the frequency. Until then the signal passes through the bypass at the transceiver's power. The PA never amplifies through the wrong filter. Cost: approx. 20–40 ms without the PA at the start of each transmission (longer with SSB if the speech starts quietly). |
-| **On** | TX immediately, suitable for full QSK. The filter protection above still applies. After a change from a higher to a lower band, a window of a few milliseconds remains in which harmonics are poorly suppressed. |
+Compared with the F-Sense mode of the original v4.01a:
+
+| | v4.01a (original) | F-Sense QSK **Off** (default) | F-Sense QSK **On** |
+|---|---|---|---|
+| **TX enable** | immediately, with the last measured band | only once F-Sense has measured the frequency **in this transmission**; until then the signal passes through the bypass at the transceiver's power | immediately, with the last measured band |
+| **First transmission after a change to a higher band** (e.g. 40 → 20 m) | PA amplifies through the 40 m filter until measured → **O/C alarm** | PA never amplifies through the wrong filter | RF off after 2 ms until the band has been measured |
+| **First transmission after a change to a lower band** (e.g. 20 → 80 m) | PA amplifies through the 20 m filter until measured → poorly suppressed harmonics | PA never amplifies through the wrong filter | RF off after 3 ms until the band has been measured; **a few ms** of poorly suppressed harmonics |
+| **Filter relays on a band change** | switched under full power | switched without RF, then TX held off for 20 ms | switched without RF, then TX held off for 20 ms |
+| **Delay at the start of each transmission** | none | approx. 20–40 ms without the PA (longer with SSB if the speech starts quietly) | none |
+| **Suitable for** | – | SSB, digital modes, CW without full QSK | CW with full QSK |
+
+Rule of thumb: leave it **Off** unless you use CW with full break-in. With **On**, after a change to a lower band, key briefly at low power first.
 
 ### Xiegu band voltages
 

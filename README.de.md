@@ -90,10 +90,18 @@ Die vollständige technische Änderungshistorie steht im Kommentarkopf von `juma
 
 User-Config, letzte Seite **„F-Sense QSK“**. Die Seite erscheint nur bei *Auto Band Detect = F-Sense*.
 
-| Einstellung | Verhalten |
-|---|---|
-| **Off** (Werkseinstellung) | Bei **jeder** Aussendung wird TX erst freigegeben, wenn F-Sense die Frequenz gemessen hat. Bis dahin läuft das Signal mit der Leistung des Transceivers über den Bypass. Die PA verstärkt nie durch ein falsches Filter. Preis: ca. 20–40 ms ohne PA zu Beginn jeder Aussendung (bei SSB mit leisem Sprechbeginn auch länger). |
-| **On** | TX sofort, geeignet für Voll-QSK. Der oben beschriebene Filterschutz bleibt aktiv. Nach einem Wechsel auf ein tieferes Band bleibt ein Fenster von wenigen Millisekunden, in dem Oberwellen schlecht unterdrückt werden. |
+Vergleich mit dem F-Sense-Modus der originalen v4.01a:
+
+| | v4.01a (Original) | F-Sense QSK **Off** (Werkseinstellung) | F-Sense QSK **On** |
+|---|---|---|---|
+| **TX-Freigabe** | sofort, mit dem zuletzt gemessenen Band | erst wenn F-Sense die Frequenz **in dieser Aussendung** gemessen hat; bis dahin läuft das Signal mit der Leistung des Transceivers über den Bypass | sofort, mit dem zuletzt gemessenen Band |
+| **Erstes Senden nach Wechsel auf höheres Band** (z. B. 40 → 20 m) | PA verstärkt durch das 40-m-Filter, bis gemessen ist → **O/C-Alarm** | PA verstärkt nie durch ein falsches Filter | nach 2 ms HF aus, bis das Band gemessen ist |
+| **Erstes Senden nach Wechsel auf tieferes Band** (z. B. 20 → 80 m) | PA verstärkt durch das 20-m-Filter, bis gemessen ist → schlecht unterdrückte Oberwellen | PA verstärkt nie durch ein falsches Filter | nach 3 ms HF aus, bis das Band gemessen ist; **wenige ms** mit schlecht unterdrückten Oberwellen |
+| **Filterrelais beim Bandwechsel** | schalten unter voller Leistung | schalten ohne HF, danach 20 ms TX-Sperre | schalten ohne HF, danach 20 ms TX-Sperre |
+| **Verzögerung am Anfang jeder Aussendung** | keine | ca. 20–40 ms ohne PA (bei SSB mit leisem Sprechbeginn auch länger) | keine |
+| **Geeignet für** | – | SSB, Digimodes, CW ohne Voll-QSK | CW mit Voll-QSK |
+
+Faustregel: **Off** lassen, außer bei CW mit Voll-Break-in. Mit **On** nach einem Wechsel auf ein tieferes Band zuerst kurz mit kleiner Leistung tasten.
 
 ### Xiegu-Bandspannungen
 
