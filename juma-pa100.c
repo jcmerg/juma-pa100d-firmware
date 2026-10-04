@@ -608,6 +608,11 @@
    the occasional O/C alarm in the F-Sense mode on the first transmission after a band change, e.g. 40m to 20m, when
    the 20m signal was amplified through the 40m filter until the new band had been measured. There is no additional
    delay when the band is unchanged, so full QSK still works.
+ Build 3-DL4JC
+ - New User Configuration page "F-Sense QSK", only shown in the F-Sense mode. Off (default): TX is only enabled once the
+   input frequency has been measured in the current transmission, approx. 20-40mS without the PA at the start of each
+   transmission. On: TX immediately, for full QSK, as in Build 2. Stored in bit 1 of eeprom.defval.graph_limits, the EEPROM
+   layout is unchanged. Set it to Off before loading the original firmware.
  Build 2-DL4JC
  - F-Sense mode only: if, within the first 200mS of a transmission, the input frequency is below the selected filter for
    3mS, RF is also turned off until the band has been measured. This avoids poorly suppressed harmonics on the first
@@ -850,7 +855,8 @@ const char *page_prompt[] = {					// Indexed by: sub_page1 (Line 1)
 							"Graphical Limits",	// 12
 							"Graphic Display",	// 13
 							"RF Power Meter",	// 14
-							"Start-Up Display"	// 15
+							"Start-Up Display",	// 15
+							"F-Sense QSK"		// 16
 							};
 
 const char *poll_cmd[] = 	{	// Polling Messages. Indexed by: Band_Select_Mode. First character is byte count.
@@ -1011,6 +1017,8 @@ int fan_speed = OFF;			// Fan speed, 0 = Off, 1 = Slow, 2 = Medium, 3 = Fast, us
 char tx = 'R';					// TX/RX indicator, used in remote(), and send_status().
 
 int fd_counter;					// Counts how many times factory defaults have been reloaded.
+int fsense_confirmed = FALSE;	// F-Sense band measured in the current transmission (F-Sense QSK Off)
+int last_key = FALSE;			// Previous KEY state, used to detect the start of a transmission
 
 // Band Select Limits
 const unsigned int band_limits[] = {
@@ -1322,7 +1330,7 @@ void xmit_cmd(const char *p)
 */
 void set_repeat_speed(void)
 	{
-	rep_dly = (SPEED_ARRAY & (1 << sub_page1)) ? _FAST : _SLOW;
+	rep_dly = (SPEED_ARRAY & (1L << sub_page1)) ? _FAST : _SLOW;	// 1L: there are now 17 pages
 	}
 
 void display_beeps(int page)
@@ -2029,7 +2037,7 @@ const char * display_alarms(void)
 // Calculate & display bar graph meter
 int scaled_value(void)
 	{
-	if(eeprom.defval.graph_limits)		// If Graph Limits is set to ON...
+	if(Graph_Limits)					// If Graph Limits is set to ON...
 		{
 		if(sub_page0 == 1)
 			{
@@ -2299,6 +2307,8 @@ void eval_band()	// Improved F-sense - A.Ryan - 5B4AIY - 30/APR/2014
 				last_band = i;
 				Current_Band = i;			// Set band
 				}
+
+			if(key) fsense_confirmed = TRUE;	// The band has been measured in this transmission. (F-Sense QSK Off)
 
 			if(key) filter_mismatch = FALSE;	// A valid measurement during TX: the band is now correct, tx_guard() checks
 			}								// the filter again. (A band change is handled by set_relays().) DL4JC
@@ -2747,8 +2757,11 @@ void cfg_11(void)						// Select Band Units (MHz/Metres)
 
 void cfg_12(void)						// Select graphical display of parameter limits. 
 	{
-	get_one_zero(&eeprom.defval.graph_limits);
-	sprintf(lcdpbuff, cfg_12_Msg, on_off[eeprom.defval.graph_limits]);
+	int on = Graph_Limits;				// Bit 0 only, bit 1 is the F-Sense QSK setting.
+
+	get_one_zero(&on);
+	eeprom.defval.graph_limits = (eeprom.defval.graph_limits & ~GRAPH_LIMITS_BIT) | (on ? GRAPH_LIMITS_BIT : 0);
+	sprintf(lcdpbuff, cfg_12_Msg, on_off[on]);
 	}
 
 void cfg_13(void)						// Select type of graphic display scale
@@ -2768,6 +2781,20 @@ void cfg_15(void)						// Start-Up Page Select
 	set_value(1, &Start_Page, TEMPERATURE, DEFAULT_PWR);
 	sprintf(lcdpbuff, cfg_15_Msg, start_page_select[Start_Page]);
 	}
+/*
+ F-Sense QSK On/Off. Off: in the F-Sense mode TX is only enabled once the input frequency has been measured in the current
+ transmission, so the PA never amplifies through the wrong filter, at the cost of approx. 20-40mS without the PA at the
+ start of each transmission. On: TX is enabled immediately, suitable for full QSK; the filter is then protected by
+ tx_guard() in timers_pwm.c, which leaves a window of a few mS after a band change. DL4JC
+*/
+void cfg_16(void)
+	{
+	int on = FSense_QSK;
+
+	get_one_zero(&on);
+	eeprom.defval.graph_limits = (eeprom.defval.graph_limits & ~FSENSE_QSK_BIT) | (on ? FSENSE_QSK_BIT : 0);
+	sprintf(lcdpbuff, cfg_2_Msg, on_off[on]);
+	}
 
 void (*set_cfg[])(void) = {				// Indexed by: sub_page1
 						cfg_0,			// 0	Auto Band Select Mode (0 = Yaesu, 1 = Elecraft KX-3, 3 = Juma TRX-2, 4 = F-Sense, 5 = FT-817)
@@ -2785,7 +2812,8 @@ void (*set_cfg[])(void) = {				// Indexed by: sub_page1
 						cfg_12,			// 12	Select Graphical Limits Display (On/Off)
 						cfg_13,			// 13	Select Graphical Display Scale (Original/Large/Small)
 						cfg_14,			// 14	Select RF Power Meter Display, (Watts/dBm)
-						cfg_15			// 15	Start-Up Page select (Power/SWR/Voltage/Current/Temperature)
+						cfg_15,			// 15	Start-Up Page select (Power/SWR/Voltage/Current/Temperature)
+						cfg_16			// 16	F-Sense QSK (On/Off), only in the F-Sense mode
 						};
 
 void display_cfg_page(void)
@@ -2799,6 +2827,15 @@ void display_cfg_page(void)
 void change_cfg_page(int direction)
 	{
 	sub_page1 += direction;
+
+	if(sub_page1 > MAX_SUB_PAGE1) sub_page1 = 0;
+	if(sub_page1 < 0) sub_page1 = MAX_SUB_PAGE1;
+
+	if((Band_Select_Mode != FREQ_SENSE) && (sub_page1 == FSENSE_QSK_PAGE))	// The F-Sense QSK page is only shown in the
+		sub_page1 += direction;												// F-Sense mode.
+
+	if(sub_page1 > MAX_SUB_PAGE1) sub_page1 = 0;
+	if(sub_page1 < 0) sub_page1 = MAX_SUB_PAGE1;
 
 	if((Band_Select_Mode > 2) && (Serial_Test_Mode != REMOTE) && (sub_page1 == 3))		// if the F-SENSE/FT-817 Modes are selected, and Serial Port is not in REMOTE,
 		sub_page1 += direction;							// then skip the Polling Timer page
@@ -3022,6 +3059,13 @@ int main(void)
 		key = KEY;						// Copy I/O bit to status flag, this uses less code than using the I/O bit directly.
 
 		if(!key) filter_mismatch = FALSE;	// The filter mismatch flag is reset at the end of each transmission.
+
+		if(Band_Select_Mode == FREQ_SENSE && !FSense_QSK)	// F-Sense with QSK Off: TX only after the band has been measured
+			{												// in this transmission.
+			if(!key) fsense_confirmed = FALSE;
+			else if(!last_key) reset_fsense();				// Start a new measurement when KEY becomes active.
+			}
+		last_key = key;
 // Auto band select
 		select_auto_band[Band_Select_Mode]();				// Get the current auto band selection,
 // Measurements & basic calculations
@@ -3169,7 +3213,8 @@ int main(void)
 			set_relays();							// Set gain & filter relays
 // Evaluate TX possibility
 			if((key) && (pa_state) && (!alarms) && (Current_Band != NOT_KNOWN) && (Current_Band != OUT_OF_BAND)
-				&& (!relay_settle) && (!filter_mismatch))		// and the filter relays have settled and match the input frequency,
+				&& (!relay_settle) && (!filter_mismatch)
+				&& ((Band_Select_Mode != FREQ_SENSE) || FSense_QSK || fsense_confirmed))	// with F-Sense QSK Off: band measured		// and the filter relays have settled and match the input frequency,
 				{
 				TX_ON = TRANSMIT;					// RF on
 				tx = 'T';							// State is Transmit

@@ -454,7 +454,8 @@ void serial_test(void)
 				printf(fan_temp_fmt, "Temperature Alarm Limit: ", Alarm_Temp, T_Char[Temp_Scale]);
 				printf(fan_temp_fmt, "Fan Start Temperature  : ", Fan_Start, T_Char[Temp_Scale]);
 				printf("Band Display Units     : %s\n\r", band_units[Band_Units]);
-				printf("Graphic Limits Display : %s\n\r", on_off[eeprom.defval.graph_limits]);
+				printf("Graphic Limits Display : %s\n\r", on_off[Graph_Limits]);
+				printf("F-Sense QSK            : %s\n\r", on_off[FSense_QSK]);
 				printf("Graphic Display Type   : %s\n\r", graph_type[Scale_Type]);
 				printf("Power Meter Type       : %s\n\r", pwr_mtr[Power_Units]);
 				printf("Start-Up Page          : %s\n\r", start_page_select[Start_Page]);

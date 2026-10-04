@@ -7,7 +7,7 @@
 
 // Version Data
 #define VERSION				"v4.02a"
-#define BUILD_NUMBER		"2-DL4JC"
+#define BUILD_NUMBER		"3-DL4JC"
 #define BUILD_DATE			"04/OCT/2026"
 
 // Macro Definitions
@@ -36,6 +36,15 @@
 #define	Cal_Checksum		cal.calval.c_csum			// Shorthand for Calibration Checksum
 #define	Cfg_Checksum		eeprom.defval.d_csum		// Shorthand for Configuration Checksum
 #define Enabled_Alarms		cal.calval.alarm_flags		// Shorthand for Enabled Alarms mask
+/*
+ eeprom.defval.graph_limits: bit 0 = Graphical Limits Display On/Off, bit 1 = F-Sense QSK On/Off. The F-Sense QSK setting
+ uses the spare bit so that the EEPROM layout is unchanged. Set F-Sense QSK to Off before loading the original firmware,
+ as it only expects 0 or 1 here. DL4JC
+*/
+#define GRAPH_LIMITS_BIT	0x0001
+#define FSENSE_QSK_BIT		0x0002
+#define Graph_Limits		(eeprom.defval.graph_limits & GRAPH_LIMITS_BIT)			// Graphical Limits Display, 0/1
+#define FSense_QSK			((eeprom.defval.graph_limits & FSENSE_QSK_BIT) ? 1 : 0)	// F-Sense QSK, 0/1
 
 //Standard Constants
 #define	MAX_SERVICE_PAGES	13
@@ -43,7 +52,8 @@
 #define USER_CONFIG_MODE	MAX_LCD_MODE
 #define NORMAL_DISPLAY_MODE	0
 #define	MAX_SUB_PAGE0		4				// Sub page 0 normal displays
-#define	MAX_SUB_PAGE1		15				// Sub page 1 configuration displays
+#define	MAX_SUB_PAGE1		16				// Sub page 1 configuration displays
+#define FSENSE_QSK_PAGE		16				// F-Sense QSK On/Off, only shown in the F-Sense mode
 #define	DEFAULT_BAUD_RATE	3				// Default Baud rate = 9600
 #define	MAX_BUFFER			16				// Elecraft Receiver Buffer Size
 #define MSG_LEN				14				// Message length for FA data packet
