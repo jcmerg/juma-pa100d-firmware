@@ -184,16 +184,17 @@ programmer (see [Recovery](#recovery-with-a-programmer)).
 1. Connect the PA, **switch it off**.
 2. Start Ingenia → *OK, my platform is shut down*.
 3. Choose the COM port and baud rate (115200, or lower if there are problems) → *configuration done*.
-4. **Press and hold OPER, then press and hold PWR.** The PA shows that the flash writer has started.
-   Wait until *dsPIC6014A detected, firmware version 1.1* appears.
-5. **Release OPER, keep PWR pressed** until the end. The PA has no power latch while in the boot
-   loader; even a short release aborts the transfer.
+4. **Press and hold OPER, then press PWR.** The boot loader checks OPER right at power-on, switches
+   the power latch on itself and shows that the flash writer has started. Then release both buttons.
+   (The note "keep PWR pressed" in the old TRX-2 instructions predates the power latch, which the
+   boot loader has had since 23.01.2007, see `iBL.s` / `mini_lcd-trx2.c`.)
+5. Wait until *dsPIC6014A detected, firmware version 1.1* appears → OK.
 6. *open HEX file* → select `Juma PA-100D v4.02a Build 3-DL4JC.hex`.
 7. Only **"program flash"** may be ticked. **"write data EEPROM" and "configure registers" must not
    be ticked.** There must be no error message (see below).
 8. *start write* → takes approx. 10–15 s at 115200 baud → *write completed*.
-9. Release PWR, close Ingenia, **disconnect the power supply** (the PWR button does not work in the
-   boot loader), then switch on normally.
+9. Close Ingenia, **disconnect the power supply** (the PWR button does not work in the boot loader),
+   then switch on normally.
 
 **"Your hex file contains data in bootloader addresses"**: do not flash this file. Release builds
 of this repository are checked against it by the build script.
@@ -220,10 +221,15 @@ the original. Tested by DL4JC. Two things differ:
 The RS-928 ships with its own firmware (v1.05q), **without the Ingenia boot loader** and without a
 usable remote control. The serial update therefore only works after a one-off programming step:
 
-1. With a **PICkit** (or another dsPIC programmer) on header **J19** of the controller board, write
+1. With a **PICkit** (or another dsPIC programmer) on header **J19**, write
    [`bootloader/Bootldr_Juma-PA100_v104.hex`](bootloader/Bootldr_Juma-PA100_v104.hex) to the
    dsPIC30F6014A. This file is a complete chip image: the JUMA firmware v1.04, the Ingenia boot
-   loader and the configuration bits.
+   loader and the configuration bits. J19 is the 6-pin header next to the dsPIC (IC9) on the back
+   of the front-panel board, see the photo *rs928ampfrontpanel.jpg* in the
+   [OARC wiki](https://wiki.oarc.uk/rs928ampreview). The pins are not labelled on the board; check the
+   assignment to the programmer (MCLR, VDD, VSS, PGD, PGC) against the
+   [hermes-lite thread](https://groups.google.com/g/hermes-lite/c/breb9kSmeYc/m/xKfDIW6zEQAJ)
+   by KD2NFC and the files linked there before connecting.
 2. Check that the PA starts with the JUMA firmware.
 3. Then load this firmware over the serial port with Ingenia, exactly as described in
    [Flashing with the Ingenia boot loader](#flashing-with-the-ingenia-boot-loader) (OPER + PWR).
