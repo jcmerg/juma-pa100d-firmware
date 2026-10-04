@@ -357,8 +357,12 @@ Background: [RS-928 review in the OARC wiki](https://wiki.oarc.uk/rs928ampreview
 
 ### With MPLAB XC16 (macOS, Linux)
 
-Requirement: [MPLAB XC16](https://www.microchip.com/xc16) v2.10 (the free version is enough; the
-project is built without optimisation, `-O0`, as before).
+Requirement: [MPLAB XC16](https://www.microchip.com/xc16) v2.10 (the free version is enough).
+
+**No compiler optimisation (`-O0`), on purpose:** the timing of the firmware was measured and tuned
+at `-O0` (main loop approx. 4 ms, loop-based counters and delays), as with the original C30 build.
+Memory (37 %) and speed are sufficient. The variables shared with the interrupts are `volatile`, so
+`-O1` would be possible, but only after a complete test on the amplifier.
 
 ```sh
 ./build-xc16.sh

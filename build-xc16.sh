@@ -26,8 +26,12 @@ OUT=build
 VERSION=$(sed -n 's/^#define VERSION[[:space:]]*"\(.*\)".*/\1/p' juma-pa100.h | tr -d '\r')
 NAME="firmware/Juma PA-100D $VERSION.hex"
 mkdir -p $OUT firmware
+# No optimisation (-O0), on purpose: the timing of the firmware was measured and tuned at -O0 (main loop approx. 4mS,
+# loop based counters and delays, see the loop timing notes in juma-pa100.c), as with the original C30 build. The
+# variables shared with the interrupts are volatile, so -O1 would be possible, but only after a complete test on the
+# amplifier (band select in every mode, F-Sense, TX/SWR/filter protection, serial modes, service menu, tones).
 for f in adc12 juma-pa100 lcd-trx2 serial_pa100 serial_test service timers_pwm tmr5delay traps uart; do
-	$CC -mcpu=30F6014A -x c -c "$f.c" -o "$OUT/$f.o" -g -Wall
+	$CC -mcpu=30F6014A -x c -c "$f.c" -o "$OUT/$f.o" -O0 -g -Wall
 done
 $CC -mcpu=30F6014A -c DataEEPROM.s -o "$OUT/DataEEPROM.o" -Wa,-I"$X/support/dsPIC30F/inc"
 # Fixed link order: "$OUT"/*.o is sorted differently on macOS and Linux, which moves the functions and gives a
