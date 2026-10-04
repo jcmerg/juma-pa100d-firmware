@@ -1,0 +1,84 @@
+JUMA-TRX2 Boot Loader
+
+Ingenia dsPIC Boot loader modified for JUMA-TRX2.
+Juha Niinikoski, OH2NLT 050107.
+
+
+LCD texts added 23.01.2007. Note this version requires own version of ibl_dspiclist.xml file in ingenia boot loader directory.
+
+
+
+
+Preparations
+1.
+TRX2_boot.hex must be loaded with ICD2 to JUMA-TRX2 DDS boards dsPIC30F6014A controller.
+
+
+Loading TRX2 firmware
+2.
+Download Ingenia boot loader GUI from:
+http://www.ingenia-cat.com
+and install it to your PC. Read Ingenia manual / instructions.
+
+Copy modified ibl_dspiclist.xml file from JUMA-TRX2 boot loader directory to 
+directory where you just installed ingenia boot loader GUI. Modified file contains desinition for dsPIC30F6014A
+controller which is used in JUMA-TRX2. 
+
+3.
+Turn off JUMA-TRX2 if it is on.
+
+4.
+Start ingenia dsPIC bootloader. Follow instructions. Select COM port & Baud rate. 38400 is recomended.
+
+5.
+After pressing configuration done you get dsPIC detection applet at your screen. While ingenia dsPIC bootloader  - detection
+running. Press VFO button and keep it down. Press PWR button and keep it down.
+
+You should ret message dsPIC6014A detected firmware version 1.1.
+Now you can release VFO button, but keep PWR button pressed. Even short break spoil loading.
+
+Press OK
+
+Now you get ingenia dsPIC bootloader - loading and writing aplet.
+
+select open HEX file.
+
+Load juma-trx2.hex file. You should know where in your local disk you have downloaded it.
+start write button appears.
+program flash tick box should be selected.
+configure registers tick box shouln be clear.
+
+
+Select start write
+
+flash programming started message appears. When complete write complete message appeats.
+Log viewer window shows what have happened.
+
+Now you can release PWR button.
+
+6.
+Press PWR button.
+JUMA-TRX2 will start with new(just loades) software if everything is right.
+
+
+Other notes
+
+Cable
+
+TRX2 3,5mm plug, PC side DB9F connector
+connect:
+
+3,5mm plug tip to DB9F pin #2
+
+3,5mm plug ring to DB9F pin #3
+
+3,5mm plug frame to DB9F pin #5
+
+
+User program start address
+
+When compiling new versions make shure that your program start address remains 0x100.
+Start address 0x100 is fixed in boot loader code.
+ 
+
+

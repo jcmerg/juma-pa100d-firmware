@@ -1,0 +1,312 @@
+# JUMA PA-100D Firmware – v4.02a (DL4JC)
+
+Deutsch | [English](README.md)
+
+Überarbeitete Firmware für die KW-Endstufe **JUMA PA-100D** (dsPIC30F6014A). Grundlage ist die
+**v4.01a Build 3** von Adrian Ryan, 5B4AIY. Die ursprüngliche Firmware stammt von Juha Niinikoski,
+OH2NLT, und Matti Hohtola, OH7SV.
+
+Schwerpunkt dieser Version ist der **Schutz beim Senden** (Endstufe und Tiefpassfilter). Dazu kommen
+mehrere Fehlerbehebungen, die auch v4.01a betreffen, ein **Xiegu**-Bandspannungsmodus und die
+Möglichkeit, mit dem aktuellen Microchip-Compiler **XC16** zu bauen.
+
+> **Keine offizielle JUMA-Version.** Die Nutzung erfolgt auf eigene Verantwortung. Teste jeden neuen
+> Build zuerst mit Dummy-Load und kleiner Leistung. Du kannst jederzeit zur originalen v4.01a
+> zurückkehren, siehe [Zurück zur Original-Firmware](#zurück-zur-original-firmware).
+
+---
+
+## Inhalt
+
+- [Neuerungen](#neuerungen)
+- [Bedienung – neue Einstellungen](#bedienung--neue-einstellungen)
+- [EEPROM und Kompatibilität](#eeprom-und-kompatibilität)
+- [Flashen mit dem Ingenia-Bootloader](#flashen-mit-dem-ingenia-bootloader)
+- [Test nach dem Update](#test-nach-dem-update)
+- [Firmware bauen](#firmware-bauen)
+- [Aufbau des Repos](#aufbau-des-repos)
+- [Bekannte Einschränkungen](#bekannte-einschränkungen)
+- [Urheberrecht und Danksagung](#urheberrecht-und-danksagung)
+
+---
+
+## Neuerungen
+
+### Schutz beim Senden
+
+| Änderung | Wirkung |
+|---|---|
+| **Schutz läuft im 1-ms-Interrupt** (`tx_guard()` in `timers_pwm.c`) | In v4.01a lag der gesamte Schutz in der Hauptschleife und stand still, sobald diese wartete, z. B. bei gedrückter Taste, bei der Speicherabfrage oder bei Serial-Test-Befehlen. TX blieb dabei eingeschaltet. |
+| **KEY losgelassen** | HF aus 2 ms nachdem KEY inaktiv wird, egal wo die Hauptschleife gerade steht. |
+| **SWR im Interrupt** | Die ADC-Messungen laufen jetzt im 1-ms-Interrupt. Das SWR wird über *Power Averaging* × 4 ms gemittelt (mindestens 8 ms) und 20 ms nach TX-Beginn geprüft. Das schaltet schnell und sicher ab, ohne Fehlauslösungen. |
+| **Watchdog der Hauptschleife** | HF aus, wenn die Hauptschleife 2 s lang nicht gelaufen ist. |
+| **User-Config-Menü** | TX_ON wird zwangsweise abgeschaltet. In v4.01a blieb es in dem Zustand, den es beim Betreten des Menüs hatte. |
+| **Trap-Handler** | Bei einem Prozessorfehler (Address-, Stack- oder Math-Trap) wird zuerst die HF abgeschaltet und der Lüfter eingeschaltet. |
+| **Service-Mode** | Ein Alarm beendet den Service-Mode jetzt wirklich. In v4.01a hing das Gerät in der Schleife. |
+
+### Schutz der Tiefpassfilter beim Bandwechsel
+
+| Änderung | Wirkung |
+|---|---|
+| **Kein Relais-Umschalten unter Last** | Bei einem Bandwechsel wird zuerst die HF abgeschaltet. Die Filterrelais schalten, wenn die PA-Relais abgefallen sind, und TX bleibt 20 ms gesperrt, bis die Relais eingeschwungen sind. |
+| **Frequenz oberhalb des Filters** | Liegt die mit F-Sense gemessene Eingangsfrequenz 2 ms lang über dem gewählten Filter, geht die HF aus, bis das Band korrigiert ist. Das behebt den **O/C-Alarm** aus v4.01a beim ersten Senden nach einem Bandwechsel im F-Sense-Modus, z. B. 40 m → 20 m. Er entstand, weil 20 m durch das 40-m-Filter verstärkt wurde. Wirkt in allen Bandwahl-Modi. |
+| **Frequenz unterhalb des Filters** (F-Sense) | In den ersten 200 ms einer Aussendung: 3 ms unter dem gewählten Filter bedeutet HF aus, bis das Band gemessen ist (z. B. 80 m durch das 20-m-Filter, schlechte Oberwellenunterdrückung). |
+| **Schalter F-Sense QSK** | Neue Menüseite, siehe [unten](#f-sense-qsk). |
+
+### Bandwahl
+
+| Änderung | Wirkung |
+|---|---|
+| **Xiegu-Modus** (neu) | Bandspannungen vom Xiegu-ACC-Anschluss (230-mV-Schritte, inklusive 60 m). Siehe [Tabelle](#xiegu-bandspannungen). |
+| **KX2/KX3 (ASCII)** | Frequenzen über 30 MHz werden vor der 16-Bit-Umrechnung begrenzt. In v4.01a wurden z. B. aus 144 MHz rechnerisch 12,9 MHz, und das **20-m-Filter wurde mit TX-Freigabe** gewählt. |
+| **Juma TRX-2** | Ein ungültiges Band vom TRX-2 ergibt jetzt „unbekannt“ (TX gesperrt) statt 10 m. |
+| **Menüreihenfolge** | Yaesu CAT → KX2/KX3 → Juma-TRX2 → F-Sense → FT817/818 → **Xiegu** → Manual |
+
+### Serielle Schnittstelle
+
+| Änderung | Wirkung |
+|---|---|
+| **Empfangs-Überlauf** | Die Empfangsroutine liest jetzt den ganzen UART-Puffer aus, und ein Überlauf wird automatisch zurückgesetzt. In v4.01a konnte der Empfang bei hoher Baudrate (z. B. 115200) nach einem kurzen Stoß dauerhaft ausfallen, während das Senden weiterlief. |
+| **Statuszeile am Stück** | Die Statusantwort (`=R` und Polling) wird komplett formatiert und dann in einem Zug gesendet. Vorher konnten Lücken zwischen den Feldern die Zeile zerteilen, und JUMA_CTRL zeigte dann `???`. Das Format ist unverändert. |
+
+### Sonstiges
+
+- Baut mit **MPLAB XC16 v2.10** ohne Compiler-Warnungen. Die Konfigurationsbits sind identisch mit dem Original-HEX. Die C30-Projektdateien sind weiterhin enthalten.
+- Linker-Skript: Der Programmspeicher endet **unterhalb des Bootloaders** (0x17D00). Das Build-Skript erzeugt keine HEX-Datei, die Daten im Bootloader-Bereich enthält.
+- **EEPROM-Erweiterungsblock** für die neuen Einstellungen, siehe [EEPROM](#eeprom-und-kompatibilität).
+- Startbildschirm: `JUMA PA100v4.02a` / `OH2NLT/7SV DL4JC`.
+
+Die vollständige technische Änderungshistorie steht im Kommentarkopf von `juma-pa100.c` (Abschnitt *DL4JC Modifications*).
+
+---
+
+## Bedienung – neue Einstellungen
+
+### F-Sense QSK
+
+User-Config, letzte Seite **„F-Sense QSK“**. Die Seite erscheint nur bei *Auto Band Detect = F-Sense*.
+
+| Einstellung | Verhalten |
+|---|---|
+| **Off** (Werkseinstellung) | Bei **jeder** Aussendung wird TX erst freigegeben, wenn F-Sense die Frequenz gemessen hat. Bis dahin läuft das Signal mit der Leistung des Transceivers über den Bypass. Die PA verstärkt nie durch ein falsches Filter. Preis: ca. 20–40 ms ohne PA zu Beginn jeder Aussendung (bei SSB mit leisem Sprechbeginn auch länger). |
+| **On** | TX sofort, geeignet für Voll-QSK. Der oben beschriebene Filterschutz bleibt aktiv. Nach einem Wechsel auf ein tieferes Band bleibt ein Fenster von wenigen Millisekunden, in dem Oberwellen schlecht unterdrückt werden. |
+
+### Xiegu-Bandspannungen
+
+Eingang wie bei der FT-817-Bandspannung. Schaltschwellen mittig zwischen den Stufen, Toleranz ±115 mV:
+
+| Band | 160 m | 80 m | 60 m* | 40 m | 30 m | 20 m | 17 m | 15 m | 12 m | 10 m |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Spannung | 0,23 V | 0,46 V | 0,69 V | 0,92 V | 1,15 V | 1,38 V | 1,61 V | 1,84 V | 2,07 V | 2,30 V |
+
+\* 60 m nutzt das 40-m-Filter. Unter 115 mV gilt „Out of Band“, über 2,415 V „unbekannt“. Beides sperrt TX.
+
+Geräte mit Yaesu-Bandspannungen (z. B. Brick2/3) nutzen wie bisher den Modus **FT817/818**.
+
+### Fernsteuerung
+
+Unverändert (`=A`, `=Bn`, `=C`, `=Gn`, `=O`, `=Pn`, `=R`, `=S`; Status `O:M:R:C: 5:4:0.0:13.81: 0.0:  0.0: 24:0: 0`).
+Zur bekannten Einschränkung mit Polling siehe [Bekannte Einschränkungen](#bekannte-einschränkungen).
+
+---
+
+## EEPROM und Kompatibilität
+
+- Die originalen **Konfigurations- und Kalibrierblöcke sind unverändert**. Beim Laden dieser
+  Firmware gibt es **keinen Checksummenfehler**; Kalibrierung und Einstellungen bleiben erhalten.
+- Die neuen Einstellungen liegen in einem **Erweiterungsblock an EEPROM-Adresse 0xF100** mit eigener
+  Kennung, Versionsnummer und CRC. Fehlt er (erster Start) oder ist er ungültig, bekommen nur die
+  neuen Einstellungen ihre Standardwerte.
+- Der **Xiegu-Modus** steht im Original-Block als *F-Sense* und nur im Erweiterungsblock als *Xiegu*.
+
+### Zurück zur Original-Firmware
+
+Jederzeit möglich, ohne Vorbereitung und ohne Verlust der Kalibrierung:
+
+| Einstellung in dieser Firmware | Was die originale v4.01a daraus macht |
+|---|---|
+| Kalibrierung, alle Original-Einstellungen | unverändert übernommen |
+| Xiegu | F-Sense (Bandwahl über Frequenzmessung, funktioniert mit jedem Transceiver) |
+| F-Sense QSK | ignoriert |
+
+Das Original-HEX liegt im Repo: `Juma PA-100D.hex` (v4.01a Build 3).
+Hinweis: Der originale F-Sense-Modus hat weiterhin das oben beschriebene O/C-Problem.
+
+---
+
+## Flashen mit dem Ingenia-Bootloader
+
+Die PA-100D hat den **Ingenia-dsPIC-Bootloader** im oberen Flash (0x17D00–0x17FFE). Die Firmware
+wird über die serielle Schnittstelle von einem Windows-PC geladen. Grundlage ist das JUMA-Dokument
+*„Firmware Updating for the JUMA TRX2 & PA100D“* (5B4AIY).
+
+### 1. Serielles Kabel
+
+| Signal (PC) | DB-9-Pin | 3,5-mm-Stereostecker (PA-100D) |
+|---|---|---|
+| RX-Daten | 2 | Ring (TX-Daten der PA) |
+| TX-Daten | 3 | Spitze (RX-Daten der PA) |
+| Masse | 5 | Schaft |
+
+Das TRX-2-Kabel (Spitze ↔ Pin 2, Ring ↔ Pin 3) funktioniert, wenn die internen Jumper der PA auf
+*PROGRAM* stehen, oder mit einem Nullmodem-Adapter. USB-Seriell-Adapter mit **FTDI**-Chipsatz
+arbeiten zuverlässig; manche andere Adapter schaffen 115200 Baud nicht.
+
+### 2. Zuerst die Schnittstelle prüfen – nicht überspringen
+
+Ist die Verbindung nicht zuverlässig, kann der Bootloader beschädigt werden. Dann hilft nur noch
+ein Programmer (siehe [Wiederherstellung](#wiederherstellung-mit-programmer)).
+
+1. An der PA: User-Config → *Serial Speed* **115200**, *Serial Port* **Test**, speichern.
+   (Die Seite Serial Port erscheint nur bei F-Sense, FT817, Xiegu und Manual.)
+2. Terminalprogramm am PC: 115200 Baud, 8N1.
+3. `H` eingeben → Hilfetext, `F` eingeben → EEPROM-Dump. Mehrmals wiederholen; die Ausgaben müssen
+   identisch und fehlerfrei sein.
+4. **Einstellungen sichern:** `E` eingeben und die Ausgabe aufbewahren (Kalibrierung und
+   Konfiguration).
+
+### 3. Ingenia-Loader installieren
+
+1. `ingeniadsPICbootloader.exe` installieren (Ingenia dsPIC bootloader 1.1, liegt den
+   JUMA-Firmware-Paketen bei).
+2. **Gerätedatei ersetzen:** [`tools/ingenia/ibl_dspiclist.xml`](tools/ingenia/ibl_dspiclist.xml) in
+   den Installationsordner kopieren und die vorhandene Datei überschreiben, typischerweise
+   `C:\Program Files\Ingenia\ingeniadsPICbootloader\` (64-Bit-Windows: `C:\Program Files (x86)\...`).
+   Sie enthält den dsPIC30F6014A mit dem Bootloader-Bereich 0x17D00–0x17FFE. Ohne sie wird das Gerät
+   nicht erkannt, oder das Tool kennt den geschützten Bereich nicht.
+3. Ab Windows Vista: Symbol → Eigenschaften → Kompatibilität → *Windows XP (Service Pack 3)* und
+   *Programm als Administrator ausführen*.
+
+### 4. Firmware flashen
+
+1. PA anschließen und **ausschalten**.
+2. Ingenia starten → *OK, my platform is shut down*.
+3. COM-Port und Baudrate wählen (115200, bei Problemen niedriger) → *configuration done*.
+4. **OPER gedrückt halten, dann PWR drücken und halten.** Die PA zeigt an, dass der Flash-Writer
+   läuft. Warten, bis *dsPIC6014A detected, firmware version 1.1* erscheint.
+5. **OPER loslassen, PWR bis zum Ende gedrückt halten.** Im Bootloader hält sich die PA nicht selbst
+   eingeschaltet; schon ein kurzes Loslassen bricht die Übertragung ab.
+6. *open HEX file* → `Juma PA-100D v4.02a Build 3-DL4JC.hex` wählen.
+7. Nur **„program flash“** darf angehakt sein. **„write data EEPROM“ und „configure registers“ dürfen
+   nicht angehakt sein.** Es darf keine Fehlermeldung erscheinen (siehe unten).
+8. *start write* → dauert bei 115200 Baud ca. 10–15 s → *write completed*.
+9. PWR loslassen, Ingenia schließen, **Netzteil abschalten** (die PWR-Taste funktioniert im
+   Bootloader nicht), dann normal einschalten.
+
+**„Your hex file contains data in bootloader addresses“**: Diese Datei nicht flashen. Die
+Release-Builds dieses Repos prüft das Build-Skript darauf.
+
+**Störungen:** Beim Flashen alle nicht benötigten Programme schließen (Virenscanner,
+Netzwerk-Tools). Fehler beim Schreiben kommen fast immer von der seriellen Verbindung: Kabel prüfen,
+niedrigere Baudrate versuchen.
+
+### Wiederherstellung mit Programmer
+
+Ist der Bootloader beschädigt, muss `bootloader/PA100_boot_loader.hex` mit einem Programmer
+(ICD/PICkit) über den ICD-Anschluss geladen werden. Danach lässt sich die Firmware wieder mit Ingenia
+laden. Der Quellcode des Bootloaders (`iBL.s`, von OH2NLT für JUMA angepasst) liegt in
+[`bootloader/`](bootloader/).
+
+---
+
+## Test nach dem Update
+
+Zuerst mit Dummy-Load und kleiner Leistung.
+
+1. Startbildschirm `v4.02a`, kein Checksummenfehler, Kalibrierwerte wie vorher.
+2. Leistung, Strom, Spannung und Temperatur wie vorher.
+3. **SWR-Schutz:** Mit Fehlanpassung den Trip-Wert unter das tatsächliche SWR stellen → sofort
+   Alarm und STBY; Trip-Wert darüber → kein Alarm, auch nicht bei häufigem Tasten oder SSB.
+4. **Alarm:** mit PWR und per Fernsteuerung mit `=C` quittieren; `=R` vorher und nachher (letztes
+   Feld = Alarm-Bits).
+5. **Bandwechsel im F-Sense-Modus:** 40 m → 20 m, 80 m → 20 m, 30 m → 20 m und zurück, jeweils
+   mehrmals: kein O/C-Alarm.
+6. **F-Sense QSK** Off/On, SSB und CW auf einem Band: keine Aussetzer.
+7. **Xiegu:** jedes Band prüfen (Serial-Test `A` zeigt Spannung und erkanntes Band).
+8. **Watchdog:** beim Senden OPER länger als 2 s halten → TX fällt ab.
+9. **Einstellungen:** *F-Sense QSK* bzw. Xiegu ändern, speichern, aus- und einschalten → die
+   Einstellung bleibt erhalten.
+
+---
+
+## Firmware bauen
+
+### Mit MPLAB XC16 (macOS, Linux, Windows)
+
+Voraussetzung: [MPLAB XC16](https://www.microchip.com/xc16) v2.10 (die kostenlose Version reicht;
+das Projekt baut wie bisher ohne Optimierung, `-O0`).
+
+```sh
+./build-xc16.sh
+```
+
+Ergebnis: `Juma PA-100D <VERSION> Build <BUILD>.hex` im Projektordner. Version und Build-Nummer
+kommen aus `juma-pa100.h` (`VERSION`, `BUILD_NUMBER`). Das Skript
+
+- kompiliert alle Module mit `-mcpu=30F6014A -Wall`,
+- linkt mit `juma-trx2.gld` (bootloader-spezifisch: Code ab 0x100, Programmspeicher unterhalb 0x17D00),
+- erzeugt das HEX und **bricht ab, wenn etwas im Bootloader-Bereich landet**.
+
+Anderer XC16-Pfad: `XC16=/pfad/zu/xc16/v2.10 ./build-xc16.sh`.
+
+**macOS mit Apple Silicon:** XC16 ist ein Intel-Programm und läuft unter Rosetta (das Skript ruft es
+mit `arch -x86_64` auf). Das Installationsprogramm bricht auf Apple Silicon kommentarlos ab; dann das
+innere Installationsprogramm direkt starten:
+`arch -x86_64 ".../xc16-v2.10-osx-installer.app/Contents/MacOS/osx-x86_64"` (braucht Admin-Rechte).
+
+### Mit MPLAB C30 (Original-Toolchain)
+
+`Juma PA-100D.mcp` ist das originale MPLAB-8/C30-Projekt. Der Quellcode enthält `#ifdef __XC16__`
+nur für die Konfigurationsbits; alles andere ist gemeinsamer Code. C30-Builds sind für diese Version
+nicht getestet.
+
+---
+
+## Aufbau des Repos
+
+| Pfad | Inhalt |
+|---|---|
+| `juma-pa100.c` | Hauptprogramm, Menüs, Bandwahl, Fernsteuerung, Änderungshistorie |
+| `timers_pwm.c` | 1-ms-Interrupt: Frequenzzähler, Tasten, `tx_guard()` (TX-, SWR- und Filterschutz) |
+| `adc12.c` | ADC-Messungen im Interrupt |
+| `uart.c`, `serial_pa100.c`, `serial_test.c` | Serielle Schnittstelle, TRX-2-Protokoll, Testsuite |
+| `service.c` | Kalibrier- und Service-Mode |
+| `lcd-trx2.c`, `traps.c`, `tmr5delay.c`, `spi1.c`, `DataEEPROM.s` | LCD, Trap-Handler, Wartezeiten, SPI, EEPROM-Zugriff |
+| `juma-pa100.h`, `pa100_eeprom.h` | Hardware-Definitionen, EEPROM-Strukturen |
+| `juma-trx2.gld` | Linker-Skript für den Ingenia-Bootloader |
+| `build-xc16.sh` | Build-Skript für XC16 |
+| `Juma PA-100D v4.02a Build *-DL4JC.hex` | Aktueller Build |
+| `Juma PA-100D.hex` | Original v4.01a Build 3 (zum Zurückgehen) |
+| `tools/ingenia/ibl_dspiclist.xml` | Gerätedatei für den Ingenia-Loader |
+| `bootloader/` | Bootloader-Quellcode und HEX (für Programmer) |
+| `Juma PA-100D.mcp/.mcw/.mcs` | Originales MPLAB-8-Projekt |
+
+---
+
+## Bekannte Einschränkungen
+
+- **F-Sense QSK = On:** Nach einem Wechsel auf ein tieferes Band bleibt ein Fenster von wenigen
+  Millisekunden mit schlecht unterdrückten Oberwellen (die Frequenz lässt sich erst messen, wenn HF
+  anliegt). Wem das wichtig ist: Einstellung auf **Off** lassen oder nach einem Bandwechsel zuerst
+  kurz mit kleiner Leistung tasten.
+- **Fernsteuerung mit Polling:** Wie in v4.01a läuft der Remote-Timeout bei eingeschaltetem Polling
+  nie ab, weil jede automatische Statusmeldung ihn neu startet. Ein ausgefallener Remote-Host wird
+  deshalb nicht erkannt. Das ist bewusst so belassen, damit bestehende Fernsteuer-Programme weiter
+  funktionieren.
+- **USB-Seriell-Adapter** zerteilen Zeilen gemäß ihrem Latency-Timer (FTDI: 16 ms).
+  Fernsteuer-Programme sollten Zeilen bis `\n\r` zusammensetzen. Unter Windows lässt sich der
+  *Latency Timer* auf 1 ms stellen (Gerätemanager → COM-Port → Erweitert).
+
+---
+
+## Urheberrecht und Danksagung
+
+- Ursprüngliche Firmware: **Juha Niinikoski, OH2NLT**, und **Matti Hohtola, OH7SV** (JUMA)
+- Erweiterungen und Pflege bis v4.01a: **Adrian Ryan, 5B4AIY**
+- Änderungen v4.02a: **DL4JC**
+- `DataEEPROM.s`, `DataEEPROM.h`: Microchip Technology Inc. (Microchip-Lizenz, siehe Dateikopf)
+- Ingenia-dsPIC-Bootloader: Ingenia-CAT S.L., angepasst von OH2NLT
+
+Die Original-Quellen werden von JUMA (jumaradio.com) ohne ausdrückliche Lizenz frei verteilt. Das
+Urheberrecht der ursprünglichen Autoren gilt weiter; dieses Repo vergibt keine eigene Lizenz. Die
+Änderungen von DL4JC dürfen unter denselben Bedingungen genutzt werden wie die Original-Firmware.

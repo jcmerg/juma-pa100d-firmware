@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE devices SYSTEM "ingeniadspicbootloader.dtd">
+<devices>
+	<device id="0x01C1" name="dsPIC3011">	
+		<memcode startaddress="0x000000" endaddress="0x003FFE">
+			<bootloader startaddress="0x003E00" endaddress="0x003FFE"/>
+		</memcode>
+		<memdata startaddress="0x7FFC00" endaddress="0x7FFFFE"/>
+		<memconfig startaddress="0xF80000" endaddress="0xF8000B">
+			<protected startaddress="0xF8000A" endaddress="0xF8000B"/>
+		</memconfig>
+	</device>
+
+	<device id="0x0101" name="dsPIC4011">	
+		<memcode startaddress="0x000000" endaddress="0x007FFE">
+			<bootloader startaddress="0x007E00" endaddress="0x007FFE"/>
+		</memcode>
+		<memdata startaddress="0x7FFC00" endaddress="0x7FFFFE"/>
+		<memconfig startaddress="0xF80000" endaddress="0xF8000B">
+			<protected startaddress="0xF8000A" endaddress="0xF8000B"/>
+		</memconfig>
+	</device>
+
+	<device id="0x0080" name="dsPIC5011">	
+		<memcode startaddress="0x000000" endaddress="0x00AFFE">
+			<bootloader startaddress="0x00AE00" endaddress="0x00AFFE"/>
+		</memcode>
+		<memdata startaddress="0x7FFC00" endaddress="0x7FFFFE"/>
+		<memconfig startaddress="0xF80000" endaddress="0xF8000B">
+			<protected startaddress="0xF8000A" endaddress="0xF8000B"/>
+		</memconfig>
+	</device>
+
+	<device id="0x0198" name="dsPIC6014">
+		<memcode startaddress="0x000000" endaddress="0x017FFE">
+			<bootloader startaddress="0x017E00" endaddress="0x017FFE"/>
+		</memcode>
+		<memdata startaddress="0x7FF000" endaddress="0x7FFFFE"/>
+		<memconfig startaddress="0xF80000" endaddress="0xF8000B">
+			<protected startaddress="0xF8000A" endaddress="0xF8000B"/>
+		</memconfig>
+	</device>
+
+	<device id="0x02C3" name="dsPIC6014A">
+		<memcode startaddress="0x000000" endaddress="0x017FFE">
+			<bootloader startaddress="0x017D00" endaddress="0x017FFE"/>
+		</memcode>
+		<memdata startaddress="0x7FF000" endaddress="0x7FFFFE"/>
+		<memconfig startaddress="0xF80000" endaddress="0xF8000B">
+			<protected startaddress="0xF8000A" endaddress="0xF8000B"/>
+		</memconfig>
+	</device>
+
+</devices>
