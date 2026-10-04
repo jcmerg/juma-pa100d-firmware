@@ -240,15 +240,16 @@ of this repository are checked against it by the build script.
 tools). Errors while writing almost always come from the serial connection: check the cable,
 try a lower baud rate.
 
-### Alternative: pa100-flash.py (Windows, macOS, Linux)
+### Alternative: juma-flash.py (Windows, macOS, Linux)
 
-[`tools/pa100-flash.py`](tools/pa100-flash.py) is a command-line loader written from the boot loader
-source `bootloader/iBL.s`. It replaces steps 3 and 4 and does not need Ingenia, the device file or
+[`tools/juma-flash.py`](tools/juma-flash.py) is a command-line loader written from the boot loader
+source `bootloader/iBL.s`. It should also work with other JUMA devices that use the Ingenia boot loader (e.g. TRX-2),
+but has only been tested with the PA-100D. It replaces steps 3 and 4 and does not need Ingenia, the device file or
 administrator rights. Requirements: Python 3 and pyserial (`pip install pyserial`). Cable and the
 serial port check (steps 1 and 2) are the same.
 
 ```
-python3 tools/pa100-flash.py --port COM3 "Juma PA-100D v4.02a Build 4-DL4JC.hex"
+python3 tools/juma-flash.py --port COM3 "Juma PA-100D v4.02a Build 4-DL4JC.hex"
 ```
 
 (macOS/Linux: e.g. `--port /dev/cu.usbserial-XXXX` or `/dev/ttyUSB0`; without `--port` the available
@@ -258,15 +259,16 @@ for verification. Then disconnect the power supply and switch on normally.
 
 - Only the program memory is written, never the configuration registers or the data EEPROM, so the
   calibration is kept. HEX files with data in the boot loader area are refused.
-- The reset vector is always set to the boot loader (GOTO 0x17D00), so the boot loader stays
-  reachable even if flashing is interrupted. In that case simply flash again.
+- The boot loader address is read from the device's reset vector (PA-100D: 0x17D00) and this area is
+  never written. The reset vector always keeps pointing to the boot loader, so it stays reachable even
+  if flashing is interrupted. In that case simply flash again.
 - `--dry-run` only checks the HEX file, `--verify-only` compares the flash with the HEX file,
   `--baud` sets a lower speed (default 115200).
 
 ### Recovery with a programmer
 
 If the boot loader is damaged, `bootloader/PA100_boot_loader.hex` must be loaded with a programmer
-(ICD/PICkit) through the ICD header. After that the firmware can be loaded with Ingenia or `pa100-flash.py` again.
+(ICD/PICkit) through the ICD header. After that the firmware can be loaded with Ingenia or `juma-flash.py` again.
 The boot loader source code (`iBL.s`, modified for JUMA by OH2NLT) is in [`bootloader/`](bootloader/).
 
 ---
@@ -372,7 +374,7 @@ this version.
 | `Juma PA-100D v4.02a Build *-DL4JC.hex` | Current build |
 | `Juma PA-100D.hex` | Original v4.01a Build 3 (to go back) |
 | `tools/ingenia/ibl_dspiclist.xml` | Device file for the Ingenia loader |
-| `tools/pa100-flash.py` | Serial firmware loader (alternative to Ingenia) |
+| `tools/juma-flash.py` | Serial firmware loader (alternative to Ingenia) |
 | `bootloader/` | Boot loader source and HEX; `Bootldr_Juma-PA100_v104.hex` = complete image for a first installation with a programmer (RS-928) |
 | `Juma PA-100D.mcp/.mcw/.mcs` | Original MPLAB 8 project |
 
