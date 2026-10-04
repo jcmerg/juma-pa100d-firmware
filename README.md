@@ -127,9 +127,6 @@ Speed* to the speed of the host (the HR50 USB port defaults to 19200).
 
 - Commands end with `;`, upper or lower case. Replies end with `;\r\n`. As with the HR50, SET
   commands are not answered.
-- The command set and reply formats follow the HR50 firmware V3.0 source
-  ([github.com/hobbypcb/hardrock-50](https://github.com/hobbypcb/hardrock-50)). The HR50 manual
-  swaps 15 m and 17 m in the `HRBN` table.
 - The band is held until the host sends a new one; the PA never polls the host. 6 m and "unknown"
   inhibit TX, 60 m uses the 40 m filter. The filter protection works as in the other modes.
 - `HRBR`, `HRTP` and `HRKX` can only be read. Serial speed and temperature scale are set in the menu
@@ -308,9 +305,7 @@ Use a dummy load and low power first.
 6. **F-Sense QSK** Off/On, SSB and CW on one band: no dropouts.
 7. **Xiegu:** check each band (serial test `A` shows voltage and detected band).
 8. **Watchdog:** hold OPER for more than 2 s while transmitting → TX drops.
-9. **Settings:** change *F-Sense QSK* / Xiegu / HR50, save, switch off and on → the setting is kept.
-10. **HR50:** from a terminal send `FA00014060000;`, `HRBN;` (→ `HRBN5;`), `HRMD1;`, `HRRX;` and check
-    band, OPER and status; then with the host program or transceiver that is to be used.
+9. **Settings:** change *F-Sense QSK* / Xiegu, save, switch off and on → the setting is kept.
 
 ---
 
