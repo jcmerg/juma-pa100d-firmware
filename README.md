@@ -401,6 +401,7 @@ this version.
 | `tools/ingenia/ibl_dspiclist.xml` | Device file for the Ingenia loader |
 | `tools/juma-flash.py` | Serial firmware loader (alternative to Ingenia) |
 | `bootloader/` | Boot loader source and HEX; `Bootldr_Juma-PA100_v104.hex` = complete image for a first installation with a programmer (RS-928) |
+| `docs/` | Notes from the original firmware (5B4AIY): build record, EEPROM settings, example outputs of the serial port |
 | `Juma PA-100D.mcp/.mcw/.mcs` | Original MPLAB 8 project |
 
 ---
