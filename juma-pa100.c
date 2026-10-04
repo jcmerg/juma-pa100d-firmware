@@ -1753,24 +1753,36 @@ void (*display_page[])(void) = {			// Indexed by: sub_page0
 							dp_5			// 5 - Frequency Display (Extended page, requires F-SENSE mode selected.)
 							};
 
+/*
+ The status line is first formatted into a buffer and then transmitted in one piece. Previously each field was sent
+ with its own printf(), and with the XC16 library each printf() waits until the last bit has been transmitted before
+ the next field is formatted. The resulting gaps split the line, e.g. in USB serial adapters, and remote programs such
+ as JUMA_CTRL could then mis-read a fragment as a status line, showing ??? instead of OPER/STBY. The output format is
+ unchanged.  DL4JC - 04/OCT/2026
+*/
 void send_status(void)
 	{
 	double power;
+	char status[80];					// Formatted status line, approx. 46 characters
+	char *p = status;
 
 	power = ((double)out_pwr * (double)cal.calval.fwd_pwr_mult);	// Scaling, P = ((ADC * ADC) * Calibration Factor) / 100,000,000
-	printf("%c:", pa[pa_state]);
-	printf("%c:", ba[Auto_Manual]);
-	printf("%c:", tx);
-	printf("%c:", T_Char[Temp_Scale]);
-	printf("%2d:", Current_Band);
-	printf("%1d:", RF_Gain[Current_Band] + 1);
-	printf("%3.1f:", swr / 100.0);
-	printf("%5.2f:", (double)batt_raw * (double)Voltmeter_Cal / 1000000.0);
-	printf("%4.1f:", ((double)amp_current * (double)Ammeter_Cal) / 200000.0);
-	printf("%5.1f:", (power > LOW_PWR_LIMIT) ? power / 100000000.0 : 0.0);
-	printf("%3d:", scaled_pa_temp);
-	printf("%1d:", fan_speed);
-	printf("%2X\n\r", alarms);
+	sprintf(status, "%c:%c:%c:%c:%2d:%1d:%3.1f:%5.2f:%4.1f:%5.1f:%3d:%1d:%2X\n\r",
+		pa[pa_state],
+		ba[Auto_Manual],
+		tx,
+		T_Char[Temp_Scale],
+		Current_Band,
+		RF_Gain[Current_Band] + 1,
+		swr / 100.0,
+		(double)batt_raw * (double)Voltmeter_Cal / 1000000.0,
+		((double)amp_current * (double)Ammeter_Cal) / 200000.0,
+		(power > LOW_PWR_LIMIT) ? power / 100000000.0 : 0.0,
+		scaled_pa_temp,
+		fan_speed,
+		alarms);
+
+	while(*p) putch(*p++);				// Transmit the complete line without gaps.
 	}
 /*
  Remote Control & Status Reporting
