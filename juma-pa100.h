@@ -154,6 +154,7 @@
 #define ORIGINAL			0
 #define LARGE				1
 #define SMALL				2
+#define RELAY_SETTLE		20			// mS, relay release/settling time for a band change, see set_relays()
 #define FREQ_CAL			999985L		// See comments in timers_pwm.c
 #define F_CAL_UPPER			FREQ_CAL + 360L
 #define F_CAL_LOWER			FREQ_CAL - 360L

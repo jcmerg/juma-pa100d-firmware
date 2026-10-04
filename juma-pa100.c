@@ -598,7 +598,15 @@
  Other:
  - Service mode: an alarm now really exits the service mode. Previously the service loop continued without handling any buttons.
  - Remote mode: the known limitation that the command time-out never expires when polling is enabled is now documented in remote().
- - Additional start-up screen showing the modified build.  DL4JC - 04/OCT/2026
+ - DL4JC added to the start-up screen.
+ Filter protection:
+ - A band change now turns RF off first, the filter relays are switched once the PA relays have released, and TX is
+   held off until the new relays have settled (RELAY_SETTLE). Previously the relays were switched under full power.
+ - The 1mS interrupt compares the measured input frequency with the selected low-pass filter. If the frequency is above
+   the filter for 2mS, RF is turned off until the band has been corrected. (See tx_guard() in timers_pwm.c) This fixes
+   the occasional O/C alarm in the F-Sense mode on the first transmission after a band change, e.g. 40m to 20m, when
+   the 20m signal was amplified through the 40m filter until the new band had been measured. There is no additional
+   delay when the band is unchanged, so full QSK still works.  DL4JC - 04/OCT/2026
 */
 
 #include <stdio.h>
@@ -691,6 +699,8 @@ extern int enc;
 extern volatile unsigned int adc_raw[];		// Latest A-D values, updated every 1mS in adc12.c
 extern volatile unsigned int main_heartbeat;	// Main loop watchdog, see tx_guard() in timers_pwm.c
 extern volatile int isr_swr_trip;			// SWR trip detected in the 1mS interrupt, see tx_guard() in timers_pwm.c
+extern volatile int filter_mismatch;		// Input frequency above the selected filter, see tx_guard() in timers_pwm.c
+extern volatile unsigned int relay_settle;	// Relay settling timer, mS, decremented in _T3Interrupt()
 
 // Local Data
 void (*rs232_mode)(void);					// Pointer to function taking void and returning void
@@ -919,9 +929,7 @@ const char Chksum_Err[] = {"\n\rEEPROM Checksum Error! Re-loading Factory Defaul
 const char Chksum_Err_Msg[] = {" Checksum Error "};
 const char Loading_Defaults[] = {"Loading Defaults"};
 const char Juma_PA100[] = {"JUMA PA100"};
-const char OH2NLT_OH7SV[] = {"  OH2NLT OH7SV  "};
-const char Modified_Msg[] = {" Modified Build "};
-const char DL4JC_Msg[] = {"     DL4JC      "};
+const char OH2NLT_OH7SV[] = {"OH2NLT/7SV DL4JC"};	// OH2NLT, OH7SV and DL4JC (modified build). 16 characters, the display width.
 const char Calibration_msg[] = {"  Calibration"};
 const char Mode_msg[] = {"  Mode%7s"};
 const char Display_Next[] = {" DISPLAY = Page "};
@@ -2347,6 +2355,31 @@ void eval_xiegu_band(void)
 // Set Gain & Filter Relays
 void set_relays(void)
 	{
+	static int relay_band = -1;			// Band the filter relays are set for, -1 = not yet set
+	static int release_wait = FALSE;	// Waiting for the PA relays to release before switching the filters
+/*
+ Never switch the filter relays under power. If the band changes while transmitting, RF is turned off first, and the
+ relays are switched once the PA relays have released. After any band change TX is held off until the new relays have
+ settled, see the TX evaluation in main(). Both use relay_settle, which is decremented in _T3Interrupt(). DL4JC
+*/
+	if(Current_Band != relay_band)
+		{
+		if(TX_ON)						// Band change while transmitting,
+			{
+			TX_ON = OFF;				// so RF off first,
+			tx = 'R';
+			relay_settle = RELAY_SETTLE;
+			release_wait = TRUE;
+			return;						// and switch the relays later.
+			}
+
+		if(release_wait && relay_settle) return;	// Still waiting for the PA relays to release.
+
+		release_wait = FALSE;
+		relay_band = Current_Band;
+		relay_settle = RELAY_SETTLE;	// TX is held off until the new relays have settled,
+		filter_mismatch = FALSE;		// and the new filter is checked again in tx_guard().
+		}
 // Set RF Gain relays
 /*
  If we write it this way:
@@ -2851,8 +2884,6 @@ int main(void)
 		{
 		sprintf(lcdpbuff, Hello, Juma_PA100, VERSION);
 		display_screen(lcdpbuff, OH2NLT_OH7SV);
-		ms_delay(1000);
-		display_screen(Modified_Msg, DL4JC_Msg);	// Second screen, shown for the sign-on prompt delay below
 		y = 2000;					// and set sign-on prompt delay time
 		}
 // Check if service mode start
@@ -2957,6 +2988,8 @@ int main(void)
 		MAIN_TEST = !MAIN_TEST;			// Timing test J19-5 Check with oscilloscope for reversals
 		main_heartbeat = 0;				// Main loop is running, see tx_guard() in timers_pwm.c
 		key = KEY;						// Copy I/O bit to status flag, this uses less code than using the I/O bit directly.
+
+		if(!key) filter_mismatch = FALSE;	// The filter mismatch flag is reset at the end of each transmission.
 // Auto band select
 		select_auto_band[Band_Select_Mode]();				// Get the current auto band selection,
 // Measurements & basic calculations
@@ -3103,7 +3136,8 @@ int main(void)
 // Main board relays
 			set_relays();							// Set gain & filter relays
 // Evaluate TX possibility
-			if((key) && (pa_state) && (!alarms) && (Current_Band != NOT_KNOWN) && (Current_Band != OUT_OF_BAND))
+			if((key) && (pa_state) && (!alarms) && (Current_Band != NOT_KNOWN) && (Current_Band != OUT_OF_BAND)
+				&& (!relay_settle) && (!filter_mismatch))		// and the filter relays have settled and match the input frequency,
 				{
 				TX_ON = TRANSMIT;					// RF on
 				tx = 'T';							// State is Transmit

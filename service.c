@@ -47,6 +47,8 @@ extern const char *auto_man[];
 extern const char *bs_txt[];
 extern unsigned int AD_Values[];	// A-D converter samples
 extern volatile unsigned int main_heartbeat;	// Main loop watchdog, see tx_guard() in timers_pwm.c
+extern volatile int filter_mismatch;			// Input frequency above the selected filter, see tx_guard() in timers_pwm.c
+extern volatile unsigned int relay_settle;		// Relay settling timer, see set_relays()
 
 // Local Data
 const char trip_fmt[] = {"Trip:%11s"};
@@ -325,6 +327,8 @@ void service(int service_mode)
 // TX request
 		main_heartbeat = 0;				// Service loop is running, see tx_guard() in timers_pwm.c
 		key = KEY;						// Copy I/O bit to status flag
+
+		if(!key) filter_mismatch = FALSE;	// Reset at the end of each transmission
 // Do measurements & check alarms
 		analog_measurements();
 		check_alarms();
@@ -340,7 +344,7 @@ void service(int service_mode)
 // Set relays
 			set_relays();
 // Evaluate TX possibility, needed for RF Power & Drain Current calibration
-			if(key && (Current_Band != NOT_KNOWN) && (cal_page == 1 || cal_page == 2))	// TX request
+			if(key && (Current_Band != NOT_KNOWN) && (cal_page == 1 || cal_page == 2) && !relay_settle && !filter_mismatch)	// TX request
 				{
 				pa_state = OPERATE;
 				TX_ON = ON;								// RF on

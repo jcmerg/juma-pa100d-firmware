@@ -86,6 +86,22 @@ extern volatile unsigned int adc_raw[];
 
 volatile unsigned int main_heartbeat = 0;	// mS since the main or service loop last ran, reset by those loops
 volatile int isr_swr_trip = FALSE;			// Set here, transferred to the alarms in check_alarms()
+volatile int filter_mismatch = FALSE;		// Input frequency above the selected filter, reset by the main loop
+volatile unsigned int relay_settle = 0;		// Relay settling timer, mS, set in set_relays()
+
+#define MISMATCH_TICKS	2			// mS that the input frequency must be above the selected filter
+static int mismatch_count;					// Number of consecutive mS above the selected filter
+/*
+ Highest input frequency (kHz) for the low-pass filter selected for a band. The limits are those used for the band
+ selection, see band_limits[]. Bands 5 and 6 share the 14-18MHz filter. The 21-28MHz filter, also used for OUT_OF_BAND
+ and NOT_KNOWN, passes the whole HF range, so there is no limit.
+*/
+static unsigned int filter_limit(int band)
+	{
+	if(band >= 1 && band <= 4) return band_limits[band];
+	if(band == 5 || band == 6) return band_limits[6];
+	return 0xFFFF;
+	}
 
 static unsigned long fwd_sum, rev_sum;		// SWR measurement sums
 static int swr_count;						// Number of samples in the sums
@@ -158,13 +174,23 @@ static void tx_guard(void)
 		fwd_sum = rev_sum = 0UL;
 		swr_count = 0;
 		}
+// Filter mismatch. The input frequency is measured every mS, also while TX_ON is still off. If it is above the selected
+// low-pass filter, e.g. 14MHz with the 40m filter selected after a band change in the F-Sense mode, the PA would be
+// driven into the wrong filter until the new band had been measured, which could trip the over-current protection.
+	if(KEY && (freq > band_limits[0]) && (freq > filter_limit(eeprom.defval.band)))
+		{
+		if(mismatch_count < MISMATCH_TICKS) mismatch_count++;
+		}
+	else mismatch_count = 0;
+
+	if(mismatch_count >= MISMATCH_TICKS) filter_mismatch = TRUE;
 // KEY
 	if(KEY) key_off_count = 0;
 	else if(key_off_count < KEY_OFF_TICKS) key_off_count++;
 // Main loop watchdog
 	if(main_heartbeat < MAIN_TIMEOUT) main_heartbeat++;
 // Force RF off if required
-	if((key_off_count >= KEY_OFF_TICKS) || isr_swr_trip || (alarms & ALARM_MASK) || (main_heartbeat >= MAIN_TIMEOUT))
+	if((key_off_count >= KEY_OFF_TICKS) || isr_swr_trip || filter_mismatch || (alarms & ALARM_MASK) || (main_heartbeat >= MAIN_TIMEOUT))
 		TX_ON = OFF;
 	}
 
@@ -398,6 +424,8 @@ void __attribute__((interrupt, auto_psv)) _T3Interrupt(void)
 	if(button_timer) button_timer--;		// Decrement button timer if active
 // Power meter decay counter
 	if(decay_counter) decay_counter--;
+// Relay settling timer
+	if(relay_settle) relay_settle--;
 // Band data query timer
 	if(polling_timer) polling_timer--;
 // Elecraft KX-3/Yaesu Comms Timeout
