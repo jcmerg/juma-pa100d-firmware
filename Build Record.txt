@@ -1,0 +1,105 @@
+PA-100D Version: 4.01a Build 3
+----------------------------------------------------------------------
+Release build of project `C:\Projects\Juma PA-100D\Juma PA-100D.mcp' started.
+Sat Aug 26 13:06:55 2023
+----------------------------------------------------------------------
+Clean: Deleting intermediary and output files.
+Clean: Deleted file "C:\Projects\Juma PA-100D\adc12.o".
+Clean: Deleted file "C:\Projects\Juma PA-100D\juma-pa100.o".
+Clean: Deleted file "C:\Projects\Juma PA-100D\lcd-trx2.o".
+Clean: Deleted file "C:\Projects\Juma PA-100D\serial_pa100.o".
+Clean: Deleted file "C:\Projects\Juma PA-100D\serial_test.o".
+Clean: Deleted file "C:\Projects\Juma PA-100D\service.o".
+Clean: Deleted file "C:\Projects\Juma PA-100D\timers_pwm.o".
+Clean: Deleted file "C:\Projects\Juma PA-100D\tmr5delay.o".
+Clean: Deleted file "C:\Projects\Juma PA-100D\traps.o".
+Clean: Deleted file "C:\Projects\Juma PA-100D\uart.o".
+Clean: Deleted file "C:\Projects\Juma PA-100D\Juma PA-100D.cof".
+Clean: Deleted file "C:\Projects\Juma PA-100D\Juma PA-100D.hex".
+Clean: Deleted file "C:\Projects\Juma PA-100D\Juma PA-100D.mcs".
+Clean: Done.
+Executing: "C:\Program Files (x86)\Microchip\MPLAB C30\bin\pic30-gcc.exe" -mcpu=30F6014A -x c -c   "adc12.c" -o"adc12.o" -g -Wall
+Executing: "C:\Program Files (x86)\Microchip\MPLAB C30\bin\pic30-gcc.exe" -mcpu=30F6014A -x c -c   "juma-pa100.c" -o"juma-pa100.o" -g -Wall
+Executing: "C:\Program Files (x86)\Microchip\MPLAB C30\bin\pic30-gcc.exe" -mcpu=30F6014A -x c -c   "lcd-trx2.c" -o"lcd-trx2.o" -g -Wall
+Executing: "C:\Program Files (x86)\Microchip\MPLAB C30\bin\pic30-gcc.exe" -mcpu=30F6014A -x c -c   "serial_pa100.c" -o"serial_pa100.o" -g -Wall
+Executing: "C:\Program Files (x86)\Microchip\MPLAB C30\bin\pic30-gcc.exe" -mcpu=30F6014A -x c -c   "serial_test.c" -o"serial_test.o" -g -Wall
+Executing: "C:\Program Files (x86)\Microchip\MPLAB C30\bin\pic30-gcc.exe" -mcpu=30F6014A -x c -c   "service.c" -o"service.o" -g -Wall
+Executing: "C:\Program Files (x86)\Microchip\MPLAB C30\bin\pic30-gcc.exe" -mcpu=30F6014A -x c -c   "timers_pwm.c" -o"timers_pwm.o" -g -Wall
+Executing: "C:\Program Files (x86)\Microchip\MPLAB C30\bin\pic30-gcc.exe" -mcpu=30F6014A -x c -c   "tmr5delay.c" -o"tmr5delay.o" -g -Wall
+Executing: "C:\Program Files (x86)\Microchip\MPLAB C30\bin\pic30-gcc.exe" -mcpu=30F6014A -x c -c   "traps.c" -o"traps.o" -g -Wall
+Executing: "C:\Program Files (x86)\Microchip\MPLAB C30\bin\pic30-gcc.exe" -mcpu=30F6014A -x c -c   "uart.c" -o"uart.o" -g -Wall
+Executing: "C:\Program Files (x86)\Microchip\MPLAB C30\bin\pic30-gcc.exe" -mcpu=30F6014A "adc12.o" "juma-pa100.o" "lcd-trx2.o" "serial_pa100.o" "serial_test.o" "service.o" "timers_pwm.o" "tmr5delay.o" "traps.o" "uart.o" "C:\Projects\Juma PA-100D\DataEEPROM.o" -o"Juma PA-100D.cof" -Wl,-L"C:\Program Files\Microchip\MPLAB C30\lib",--script="juma-trx2.gld",--defsym=__MPLAB_BUILD=1,--heap=500,-Map="Juma PA-100D.map",--report-mem
+
+
+Program Memory Usage
+
+section        address   length (PC units)   length (bytes) (dec)
+-------        -------   -----------------   --------------------
+.reset               0                 0x4             0x6  (6)
+.ivt               0x4                0x7c            0xba  (186)
+.aivt             0x84                0x7c            0xba  (186)
+.text            0x100              0x5eea          0x8e5f  (36447)
+.const          0x5fea              0x15ea          0x20df  (8415)
+.dinit          0x75d4               0x2e6           0x459  (1113)
+__FOSC        0xf80000                 0x2             0x3  (3)
+__FWDT        0xf80002                 0x2             0x3  (3)
+__FBORPOR     0xf80004                 0x2             0x3  (3)
+__FBS         0xf80006                 0x2             0x3  (3)
+__FSS         0xf80008                 0x2             0x3  (3)
+__FGS         0xf8000a                 0x2             0x3  (3)
+
+         Total program memory used (bytes):         0xb523  (46371) 31%
+
+
+Data Memory Usage
+
+section        address      alignment gaps    total length  (dec)
+-------        -------      --------------    -------------------
+.ndata           0x800                   0           0x12c  (300)
+.nbss            0x92c                   0           0x102  (258)
+.nbss            0xa2e                   0            0xb6  (182)
+.ndata           0xae4                   0            0x88  (136)
+.ndata           0xb6c                   0            0x4a  (74)
+.ndata           0xbb6                   0            0x48  (72)
+.ndata           0xbfe                   0            0x40  (64)
+.ndata           0xc3e                   0            0x3a  (58)
+.nbss            0xc78                   0            0x3a  (58)
+.ndata           0xcb2                   0            0x22  (34)
+.nbss            0xcd4                   0            0x20  (32)
+.nbss            0xcf4                   0            0x12  (18)
+.ndata           0xd06                   0            0x12  (18)
+.ndata           0xd18                   0             0xe  (14)
+.ndata           0xd26                   0             0x6  (6)
+.ndata           0xd2c                   0             0x2  (2)
+.ndata           0xd2e                   0             0x2  (2)
+.ndata           0xd30                   0             0x2  (2)
+.nbss            0xd32                   0             0x2  (2)
+.nbss            0xd34                   0             0x2  (2)
+.ndata           0xd36                   0             0x2  (2)
+.ndata           0xd38                   0             0x2  (2)
+.ndata           0xd3a                   0             0x2  (2)
+.nbss            0xd3c                   0             0x2  (2)
+.dconst          0xd3e                   0            0x32  (50)
+.dconst          0xd70                   0             0x8  (8)
+.dconst          0xd78                   0             0x2  (2)
+
+            Total data memory used (bytes):          0x57a  (1402) 17%
+
+
+Dynamic Memory Usage
+
+region         address                      maximum length  (dec)
+------         -------                      ---------------------
+heap             0xd7a                               0x1f4  (500)
+stack            0xf6e                              0x1832  (6194)
+
+            Maximum dynamic memory (bytes):         0x1a26  (6694)
+
+Executing: "C:\Program Files (x86)\Microchip\MPLAB C30\bin\pic30-bin2hex.exe" "C:\Projects\Juma PA-100D\Juma PA-100D.cof"
+Loaded C:\Projects\Juma PA-100D\Juma PA-100D.cof.
+----------------------------------------------------------------------
+Release build of project `C:\Projects\Juma PA-100D\Juma PA-100D.mcp' succeeded.
+Sat Aug 26 13:07:02 2023
+----------------------------------------------------------------------
+BUILD SUCCEEDED
+Checksum of Juma PA-100D.hex: 436C0611

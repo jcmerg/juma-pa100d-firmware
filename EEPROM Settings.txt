@@ -1,0 +1,164 @@
+Default System Calibration & Configuration
+      System Calibration Settings
+----------------------------------------
+Battery Voltage Factor : 5250
+PA Current Factor      : 2520
+RF Power Meter Factor  : 1149
+RF Power Meter Offset  :  120
+Beep Length Time       :  50 mS
+PWR Measurement Samples: 1
+Over-Voltage Trip      : 2762 = 14.50V
+Under-Voltage Trip     : 2076 = 10.90V
+Power Meter Full-Scale : 100W
+Freq Meter Calibration : 100000
+
+      User Configuration Settings
+----------------------------------------
+Frequency Sense Mode   : F-Sense
+Serial Link Polling    :  5 Seconds
+RS-232 Port Mode       : Test Mode
+RS-232 Port Speed      :   9600 Baud
+LCD Backlighting       :  300
+LCD Contrast           : 2000
+SWR Trip Limit         : 3.00
+Temperature Units      : Celsius
+Fan Speed Control      : Normal
+Temperature Alarm Limit: 70C
+Fan Start Temperature  : 40C
+Band Display Units     : MHz
+Graphic Limits Display : Off
+Graphic Display Type   : Original
+Power Meter Type       : Watts
+Start-Up Page          : O/P Power
+Current Amplifier State: Standby
+Band Select Mode       : Manual
+Last Valid Band Select : 28MHz
+----------------------------------------
+
+Default EEPROM Contents
+Dump EEPROM contents
+ADDR                   DATA
+---------------------------------------------
+0000: 0000 0000 0000 0000 0000 0000 0000 0000
+0010: 0000 0000 0000 0009 0002 0005 07D0 012C
+0020: 0001 0003 012C 0001 0000 0046 0028 0000
+0030: 0000 0000 0000 0000 0000 F555 FFFF FFFF
+0040: 09D8 1482 047D 0032 0001 0003 0ACA 081C
+0050: 0064 86A0 0001 0078 4290 FFFF FFFF FFFF
+0060: FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+0070: FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+0080: FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+0090: FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+00A0: FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+00B0: FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+00C0: FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+00D0: FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+00E0: FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+00F0: 0000 FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+---------------------------------------------
+
+System Calibration & Configuration after calibration
+      System Calibration Settings
+----------------------------------------
+Battery Voltage Factor : 5293
+PA Current Factor      : 2639
+RF Power Meter Factor  : 1089
+RF Power Meter Offset  :  122
+Beep Length Time       :  50 mS
+PWR Measurement Samples: 1
+Over-Voltage Trip      : 2797 = 14.80V
+Under-Voltage Trip     : 2079 = 11.00V
+Power Meter Full-Scale : 100W
+Freq Meter Calibration :  99997
+
+      User Configuration Settings
+----------------------------------------
+Frequency Sense Mode   : F-Sense
+Serial Link Polling    :  5 Seconds
+RS-232 Port Mode       : Test Mode
+RS-232 Port Speed      :   9600 Baud
+LCD Backlighting       :  300
+LCD Contrast           : 2000
+SWR Trip Limit         : 3.00
+Temperature Units      : Celsius
+Fan Speed Control      : Normal
+Temperature Alarm Limit: 70C
+Fan Start Temperature  : 40C
+Band Display Units     : MHz
+Graphic Limits Display : On
+Graphic Display Type   : Original
+Power Meter Type       : Watts
+Start-Up Page          : O/P Power
+Current Amplifier State: Operate
+Band Select Mode       : Auto
+Last Valid Band Select : 28MHz
+----------------------------------------
+
+EEPROM contents after calibration and configuration
+Dump EEPROM contents
+ADDR                   DATA
+---------------------------------------------
+0000: 0000 0000 0000 0000 0000 0000 0000 0000
+0010: 0000 0000 0000 0005 0002 0005 07D0 012C
+0020: 0001 0003 012C 0001 0000 0046 0028 0000
+0030: 0001 0000 0001 0000 0000 F557 FFFF FFFF
+0040: 0A4F 14AD 0441 0032 0001 0003 0AED 081F
+0050: 0064 869D 0001 007A 4205 FFFF FFFF FFFF
+0060: FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+0070: FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+0080: FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+0090: FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+00A0: FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+00B0: FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+00C0: FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+00D0: FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+00E0: FFFF FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+00F0: 0000 FFFF FFFF FFFF FFFF FFFF FFFF FFFF
+---------------------------------------------
+
+CHANNEL VALUE   INPUT        DISPLAY
+--------------------------------------------
+ADC  9:     5  0.006V   0.066 Amps
+ADC 10:  2592  3.164V  13.719 Volts
+ADC 11:     0  0.000V   0 - Out-Of-Band!
+ADC 12:     9  0.011V   0.0 Watts (Reverse)
+ADC 13:   679  0.829V   7.0 Watts (Forward)
+ADC 14:   356  0.435V    22 Celsius
+--------------------------------------------
+
+CHANNEL VALUE   INPUT        DISPLAY
+--------------------------------------------
+ADC  9:   853  1.041V  11.255 Amps
+ADC 10:  2555  3.119V  13.524 Volts
+ADC 11:     0  0.000V   0 - Out-Of-Band!
+ADC 12:    59  0.072V   0.0 Watts (Reverse)
+ADC 13:  2203  2.689V  58.9 Watts (Forward)
+ADC 14:   416  0.508V    25 Celsius
+--------------------------------------------
+
+Input Attenuator Status
+Band: 1.8MHz G1: = -6dB
+Band: 3.5MHz G1: = -6dB
+Band:   7MHz G1: = -6dB
+Band:  10MHz G1: = -6dB
+Band:  14MHz G1: = -6dB
+Band:  18MHz G1: = -6dB
+Band:  21MHz G1: = -6dB
+Band:  24MHz G1: = -6dB
+Band:  28MHz G1: = -6dB
+
+Temperature Sensor Calibration
+Press any key to start, any key exits...
+
+Sensor: 24.6C Displayed:  25C
+Sensor: 24.6C Displayed:  25C
+Sensor: 24.6C Displayed:  25C
+Sensor: 24.6C Displayed:  25C
+Sensor: 24.6C Displayed:  25C
+Sensor: 24.5C Displayed:  25C
+Sensor: 24.5C Displayed:  25C
+Sensor: 24.6C Displayed:  25C
+Sensor: 24.5C Displayed:  25C
+Sensor: 24.5C Displayed:  25C
+Test Terminated
+

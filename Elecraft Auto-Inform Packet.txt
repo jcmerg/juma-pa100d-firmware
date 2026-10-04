@@ -1,0 +1,19 @@
+Elecraft KX3 Auto-Inform Serial Data Packets
+Note:	Although each packet is shown here separated by a newline, in practice no newline characters
+		are transmitted, each packet that is sent terminates with the semi-colon character: ;
+Select 17m:
+FA00018119000;		VFO A frequency, Hz
+FB00018119000;		VFO B frequency, Hz
+RT0;				RIT Off
+RO-0000;			RIT/XIT Offset, Hz
+MD2;				Mode USB
+MD$2;				Operating Mode: USB
+IF00018119000     -000000 0002000001 ;		Information packet
+Select 20m:
+FA00014060000;
+FB00014060400;
+RT0;
+RO-0000;
+MD2;
+MD$2;
+IF00014060000     -000000 0002000001 ;
