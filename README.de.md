@@ -26,7 +26,6 @@ mehrere Fehlerbehebungen, die auch v4.01a betreffen, ein **Xiegu**-Bandspannungs
 - [EEPROM und Kompatibilität](#eeprom-und-kompatibilität)
 - [Flashen mit dem Ingenia-Bootloader](#flashen-mit-dem-ingenia-bootloader)
 - [RS-928-Clone](#rs-928-clone)
-- [Test nach dem Update](#test-nach-dem-update)
 - [Firmware bauen](#firmware-bauen)
 - [Aufbau des Repos](#aufbau-des-repos)
 - [Bekannte Einschränkungen](#bekannte-einschränkungen)
@@ -294,26 +293,6 @@ und umgekehrt. Das vor dem ersten Senden prüfen, sonst tastet die Endstufe nich
 Ein vertauschtes serielles Kabel führt nur zu Stille (keine Daten, keine Erkennung in Ingenia).
 
 Hintergrund: [RS-928-Test im OARC-Wiki](https://wiki.oarc.uk/rs928ampreview).
-
----
-
-## Test nach dem Update
-
-Zuerst mit Dummy-Load und kleiner Leistung.
-
-1. Startbildschirm `v4.02a`, kein Checksummenfehler, Kalibrierwerte wie vorher.
-2. Leistung, Strom, Spannung und Temperatur wie vorher.
-3. **SWR-Schutz:** Mit Fehlanpassung den Trip-Wert unter das tatsächliche SWR stellen → sofort
-   Alarm und STBY; Trip-Wert darüber → kein Alarm, auch nicht bei häufigem Tasten oder SSB.
-4. **Alarm:** mit PWR und per Fernsteuerung mit `=C` quittieren; `=R` vorher und nachher (letztes
-   Feld = Alarm-Bits).
-5. **Bandwechsel im F-Sense-Modus:** 40 m → 20 m, 80 m → 20 m, 30 m → 20 m und zurück, jeweils
-   mehrmals: kein O/C-Alarm.
-6. **F-Sense QSK** Off/On, SSB und CW auf einem Band: keine Aussetzer.
-7. **Xiegu:** jedes Band prüfen (Serial-Test `A` zeigt Spannung und erkanntes Band).
-8. **Watchdog:** beim Senden OPER länger als 2 s halten → TX fällt ab.
-9. **Einstellungen:** *F-Sense QSK* bzw. Xiegu ändern, speichern, aus- und einschalten → die
-   Einstellung bleibt erhalten.
 
 ---
 

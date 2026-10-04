@@ -25,7 +25,6 @@ serial mode, and can be built with the current Microchip **XC16** compiler.
 - [EEPROM and compatibility](#eeprom-and-compatibility)
 - [Flashing with the Ingenia boot loader](#flashing-with-the-ingenia-boot-loader)
 - [RS-928 clone](#rs-928-clone)
-- [Testing after an update](#testing-after-an-update)
 - [Building the firmware](#building-the-firmware)
 - [Repository layout](#repository-layout)
 - [Known limitations](#known-limitations)
@@ -288,24 +287,6 @@ other way round. Check this before the first transmission, otherwise the amplifi
 keys permanently. A swapped serial cable only results in silence (no data, no detection in Ingenia).
 
 Background: [RS-928 review in the OARC wiki](https://wiki.oarc.uk/rs928ampreview).
-
----
-
-## Testing after an update
-
-Use a dummy load and low power first.
-
-1. Start-up screen `v4.02a`, no checksum error, calibration values as before.
-2. Power, current, voltage and temperature as before.
-3. **SWR protection:** with a mismatched load, set the trip limit below the actual SWR → alarm and
-   STBY immediately; trip limit above it → no alarm, also not with frequent keying or SSB.
-4. **Alarm:** clear it with PWR and remotely with `=C`; `=R` before and after (last field = alarm bits).
-5. **Band change in F-Sense mode:** 40 m → 20 m, 80 m → 20 m, 30 m → 20 m and back, several times
-   each: no O/C alarm.
-6. **F-Sense QSK** Off/On, SSB and CW on one band: no dropouts.
-7. **Xiegu:** check each band (serial test `A` shows voltage and detected band).
-8. **Watchdog:** hold OPER for more than 2 s while transmitting → TX drops.
-9. **Settings:** change *F-Sense QSK* / Xiegu, save, switch off and on → the setting is kept.
 
 ---
 
