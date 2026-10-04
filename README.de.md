@@ -11,8 +11,9 @@ Schwerpunkt dieser Version ist der **Schutz beim Senden** (Endstufe und Tiefpass
 mehrere Fehlerbehebungen, die auch v4.01a betreffen, ein **Xiegu**-Bandspannungsmodus und die
 Möglichkeit, mit dem aktuellen Microchip-Compiler **XC16** zu bauen.
 
-> **Keine offizielle JUMA-Version.** Die Nutzung erfolgt auf eigene Verantwortung. Teste jeden neuen
-> Build zuerst mit Dummy-Load und kleiner Leistung. Du kannst jederzeit zur originalen v4.01a
+> **Keine offizielle JUMA-Version.** Die Nutzung erfolgt auf eigene Verantwortung. Das Aufspielen
+> einer Firmware, die nicht von JUMA stammt, kann Garantie und Support des Herstellers erlöschen
+> lassen. Teste jeden neuen Build zuerst mit Dummy-Load und kleiner Leistung. Du kannst jederzeit zur originalen v4.01a
 > zurückkehren, siehe [Zurück zur Original-Firmware](#zurück-zur-original-firmware).
 
 ---

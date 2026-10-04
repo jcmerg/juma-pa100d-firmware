@@ -11,8 +11,9 @@ This version focuses on **TX protection** (amplifier and low-pass filters), fixe
 were also present in v4.01a, adds a **Xiegu** band voltage mode, and can be built with the current
 Microchip **XC16** compiler.
 
-> **Not an official JUMA release.** You use this firmware at your own risk. Test every new build
-> with a dummy load and low power first. You can return to the original v4.01a at any time, see
+> **Not an official JUMA release.** You use this firmware at your own risk. Loading firmware that
+> is not from JUMA may void the manufacturer's warranty and support. Test every new build with a
+> dummy load and low power first. You can return to the original v4.01a at any time, see
 > [Going back to the original firmware](#going-back-to-the-original-firmware).
 
 ---
