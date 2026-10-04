@@ -64,15 +64,16 @@ const char *cal_prompt[] = {					// Indexed by: cal_page
 							"",					// 2  - RF Power (High Power - Place holder)
 							"",					// 3  - RF Power (Low Power - Place holder)
 							"Beep Len 0 = Off",	// 4  - Beep Length
-							"Power Averaging ",	// 5  - RF Power Measurement Averaging
-							"Overvoltage     ",	// 6  - Over-voltage Trip On/Off
-							"Overvoltage Trip",	// 7  - Over-voltage Trip Setting
-							"Low Voltage     ",	// 8  - Under-voltage Trip On/Off
-							"Low Voltage Trip",	// 9  - Under-voltage Trip Setting
-							"Pre-Limit Trip  ",	// 10 - Low Voltage warning
-							"Full-Scale Power",	// 11 - Graphic Power Meter Full-Scale Setting
-							"",					// 12 - Frequency Meter calibration factor (Place holder)
-							"Splash Screen   "	// 13 - Splash Screen  (On/Off)
+							"Beep Tone       ",	// 5  - Beep Tone (JUMA/RS-928) - DL4JC
+							"Power Averaging ",	// 6  - RF Power Measurement Averaging
+							"Overvoltage     ",	// 7  - Over-voltage Trip On/Off
+							"Overvoltage Trip",	// 8  - Over-voltage Trip Setting
+							"Low Voltage     ",	// 9  - Under-voltage Trip On/Off
+							"Low Voltage Trip",	// 10 - Under-voltage Trip Setting
+							"Pre-Limit Trip  ",	// 11 - Low Voltage warning
+							"Full-Scale Power",	// 12 - Graphic Power Meter Full-Scale Setting
+							"",					// 13 - Frequency Meter calibration factor (Place holder)
+							"Splash Screen   "	// 14 - Splash Screen  (On/Off)
 							};
 
 const char *svc_5_prompt[] = {					// Indexed by: 0/1 logic test in svc_5()
@@ -84,6 +85,8 @@ const char *svc_5_prompt[] = {					// Indexed by: 0/1 logic test in svc_5()
 const char svc_4_Msg1[] = {"Beep:%9imS"};
 const char svc_4_Msg2[] = {"Beep:%11s"};
 const char svc_5_Msg[] = {"Samples:%6s%2i"};
+const char beep_tone_msg[] = {"Tone:%11s"};
+const char *beep_tone_txt[] = {"JUMA", "RS-928"};	// Indexed by: Beep_Tone
 const char svc_11_Msg[] = {"Max Power:%5iW"};
 const char svc_12_msg[] = {"Factor:%9ld"};
 const char svc_13_msg[] = {"Display:%8s"};
@@ -105,6 +108,12 @@ extern struct
 	{
 	struct calval calval;
 	} cal;
+
+// DL4JC Extension Values (Beep Tone)
+extern struct
+	{
+	struct extval extval;
+	} ext;
 
 void set_alarm_flag(int on, int off)
 	{
@@ -179,6 +188,21 @@ void svc_4(void)			// Beep Length Setting
 
 	if(Beep_Time) sprintf(lcdpbuff, svc_4_Msg1, Beep_Time);			// Show current setup
 	else sprintf(lcdpbuff, svc_4_Msg2, on_off[OFF]);
+	}
+
+/*
+ Beep tones for the buzzer of the RS-928 clone, which only sounds clean between about 2300 and 2800Hz, see beep() in
+ timers_pwm.c. A changed setting is played at once. Stored in the extension block, which save_calval() also saves. DL4JC
+*/
+void svc_beep_tone(void)	// Beep Tone (JUMA/RS-928)
+	{
+	int t = Beep_Tone;
+
+	get_one_zero(&Beep_Tone);
+
+	if(Beep_Tone != t) beep(HZ466_85, 100);	// Sample of the selected tones
+
+	sprintf(lcdpbuff, beep_tone_msg, beep_tone_txt[Beep_Tone]);
 	}
 
 void svc_5(void)			// Power Averaging Samples
@@ -275,15 +299,16 @@ void (*set_svc[])(void) = {		// Indexed by: cal_page
 						svc_2,	// 2	RF Power Meter Calibration (High Power)
 						svc_3,	// 3	RF Power Meter Calibration (Low Power)
 						svc_4,	// 4	Beep Length Setting
-						svc_5,	// 5	Power Averaging Samples
-						svc_6,	// 6	Over-voltage Trip (On/Off)
-						svc_7,	// 7	Over-voltage Trip Setting
-						svc_8,	// 8	Under-voltage Trip (On/Off)
-						svc_9,	// 9	Under-voltage Trip Setting
-						svc_10,	// 10	Pre-Limit Trip Setting
-						svc_11,	// 11	Graphic Power Meter Maximum Scale Setting
-						svc_12,	// 12	Frequency Meter calibration factor
-						svc_13	// 13	Splash Screen Display (On/Off)
+						svc_beep_tone,	// 5	Beep Tone (JUMA/RS-928) - DL4JC
+						svc_5,	// 6	Power Averaging Samples
+						svc_6,	// 7	Over-voltage Trip (On/Off)
+						svc_7,	// 8	Over-voltage Trip Setting
+						svc_8,	// 9	Under-voltage Trip (On/Off)
+						svc_9,	// 10	Under-voltage Trip Setting
+						svc_10,	// 11	Pre-Limit Trip Setting
+						svc_11,	// 12	Graphic Power Meter Maximum Scale Setting
+						svc_12,	// 13	Frequency Meter calibration factor
+						svc_13	// 14	Splash Screen Display (On/Off)
 						};
 
 void display_svc_page(void)
@@ -292,22 +317,22 @@ void display_svc_page(void)
 	set_svc[cal_page]();							// Execute current calibration page's code and
 	display_line(LINE2, lcdpbuff);					// display the returned value on line 2.
 
-	if(cal_page != 9) old_lower_trip = cal.calval.undervoltage_trip;	// Take account of the current Low-Voltage trip point
+	if(cal_page != 10) old_lower_trip = cal.calval.undervoltage_trip;	// Take account of the current Low-Voltage trip point
 	}
 
 void change_cal_page(int direction)
 	{
 	cal_page += direction;
 
-	if(!(Enabled_Alarms & HI_V) && (cal_page == 7)) cal_page += direction;	// If the High-Voltage alarm is disabled, then skip its page.
+	if(!(Enabled_Alarms & HI_V) && (cal_page == 8)) cal_page += direction;	// If the High-Voltage alarm is disabled, then skip its page.
 
-	if(!(Enabled_Alarms & LO_V) && (cal_page == 9 || cal_page == 10)) cal_page += (2 * direction);	// If Low-Voltage alarm is disabled, skip 2 pages
+	if(!(Enabled_Alarms & LO_V) && (cal_page == 10 || cal_page == 11)) cal_page += (2 * direction);	// If Low-Voltage alarm is disabled, skip 2 pages
 
 	if(cal_page > MAX_SERVICE_PAGES) cal_page = 0;
 
 	if(cal_page < 0) cal_page = MAX_SERVICE_PAGES;
 
-	rep_dly = (cal_page == 5) ? _SLOW : _FAST;
+	rep_dly = (cal_page == 6) ? _SLOW : _FAST;
 	display_beeps(cal_page);
 	}
 

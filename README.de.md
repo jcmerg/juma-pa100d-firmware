@@ -78,6 +78,7 @@ mehrere Fehlerbehebungen, die auch v4.01a betreffen, ein **Xiegu**-Bandspannungs
 - Baut mit **MPLAB XC16 v2.10** ohne Compiler-Warnungen. Die Konfigurationsbits sind identisch mit dem Original-HEX. Die C30-Projektdateien sind weiterhin enthalten.
 - Linker-Skript: Der Programmspeicher endet **unterhalb des Bootloaders** (0x17D00). Das Build-Skript erzeugt keine HEX-Datei, die Daten im Bootloader-Bereich enthält.
 - **EEPROM-Erweiterungsblock** für die neuen Einstellungen, siehe [EEPROM](#eeprom-und-kompatibilität).
+- Service-Menü **Beep Tone**: Töne im sauberen Bereich des RS-928-Summers, siehe [Beep Tone](#beep-tone-service-menü).
 - Startbildschirm: `JUMA PA100v4.02a` / `OH2NLT/7SV DL4JC`.
 
 Die vollständige technische Änderungshistorie steht im Kommentarkopf von `juma-pa100.c` (Abschnitt *DL4JC Modifications*).
@@ -141,6 +142,20 @@ auf die Geschwindigkeit des Hosts stellen (der USB-Port der HR50 steht ab Werk a
 - `HRBR`, `HRTP` und `HRKX` lassen sich nur lesen. Geschwindigkeit und Temperaturskala werden im Menü
   eingestellt (die Temperaturskala setzt auch die Alarm- und Lüftergrenzen).
 
+### Beep Tone (Service-Menü)
+
+Service-Menü (aus dem ausgeschalteten Zustand **PWR** halten, bis *Calibration Mode* erscheint),
+Seite **„Beep Tone“** hinter *Beep Len*, mit UP/DOWN einstellen, mit OPER speichern. Eine geänderte
+Einstellung wird sofort vorgespielt.
+
+| Einstellung | Töne |
+|---|---|
+| **JUMA** (Standard) | unverändert: 601, 784, 934, 1397 Hz, Alarm 2000 Hz |
+| **RS-928** | 2300, 2450, 2600, 2750 Hz, Alarm 2700 Hz – für den Summer des [RS-928](#summer) |
+
+Die Reihenfolge der Töne bleibt erhalten. (Die Tonnamen im Quelltext, z. B. `HZ466_85`, liegen eine
+Oktave tiefer als die tatsächlich gespielten Töne.)
+
 ### Fernsteuerung
 
 Unverändert (`=A`, `=Bn`, `=C`, `=Gn`, `=O`, `=Pn`, `=R`, `=S`; Status `O:M:R:C: 5:4:0.0:13.81: 0.0:  0.0: 24:0: 0`).
@@ -157,6 +172,7 @@ Zur bekannten Einschränkung mit Polling siehe [Bekannte Einschränkungen](#beka
   neuen Einstellungen ihre Standardwerte.
 - Der **Xiegu-Modus** steht im Original-Block als *F-Sense* und nur im Erweiterungsblock als *Xiegu*.
   Der **HR50-Modus** steht im Original-Block als *KX2/KX3*.
+- **Beep Tone** steht nur im Erweiterungsblock. Er wird auch mit den Service-Einstellungen gespeichert.
 
 ### Zurück zur Original-Firmware
 
@@ -230,7 +246,7 @@ ein Programmer (siehe [Wiederherstellung](#wiederherstellung-mit-programmer)).
    stammt aus der Zeit vor der Selbsthaltung, die der Bootloader seit 23.01.2007 hat, siehe `iBL.s` /
    `mini_lcd-trx2.c`.)
 5. Warten, bis *dsPIC6014A detected, firmware version 1.1* erscheint → OK.
-6. *open HEX file* → `Juma PA-100D v4.02a Build 4-DL4JC.hex` wählen.
+6. *open HEX file* → `Juma PA-100D v4.02a Build 5-DL4JC.hex` wählen.
 7. Nur **„program flash“** darf angehakt sein. **„write data EEPROM“ und „configure registers“ dürfen
    nicht angehakt sein.** Es darf keine Fehlermeldung erscheinen (siehe unten).
 8. *start write* → dauert bei 115200 Baud ca. 10–15 s → *write completed*.
@@ -253,7 +269,7 @@ noch die Gerätedatei oder Administratorrechte. Voraussetzung: Python 3 und pyse
 (`pip install pyserial`). Kabel und Prüfung der seriellen Schnittstelle (Schritte 1 und 2) bleiben gleich.
 
 ```
-python3 tools/juma-flash.py --port COM3 "Juma PA-100D v4.02a Build 4-DL4JC.hex"
+python3 tools/juma-flash.py --port COM3 "Juma PA-100D v4.02a Build 5-DL4JC.hex"
 ```
 
 (macOS/Linux: z. B. `--port /dev/cu.usbserial-XXXX` oder `/dev/ttyUSB0`; ohne `--port` werden die
@@ -281,7 +297,7 @@ oder `juma-flash.py` laden. Der Quellcode des Bootloaders (`iBL.s`, von OH2NLT f
 ## RS-928-Clone
 
 Diese Firmware läuft auch auf dem **RS-928**, einem Nachbau der PA-100D, dessen Hardware praktisch
-dem Original entspricht. Zwei Dinge sind anders:
+dem Original entspricht. Drei Dinge sind anders:
 
 ### Erstinstallation: PICkit über den Header J19
 
@@ -326,6 +342,15 @@ an der PTT-Buchse**. Der Schaft ist bei beiden Masse.
 An der **PTT-Buchse** liegt beim RS-928 ebenfalls auf dem Ring, was die PA-100D auf der Spitze hat,
 und umgekehrt. Das vor dem ersten Senden prüfen, sonst tastet die Endstufe nicht oder dauerhaft.
 Ein vertauschtes serielles Kabel führt nur zu Stille (keine Daten, keine Erkennung in Ingenia).
+
+### Summer
+
+Der Summer des RS-928 hat seine Resonanz bei etwa **2,7 kHz** und klingt nur zwischen etwa
+**2300 und 2800 Hz** sauber (gemessen mit dem Tontest `K` im seriellen Testmodus). Die JUMA-Töne
+von 600–2000 Hz klingen auf dem RS-928 deshalb schnarrend, auch mit der Original-Firmware, während
+sie auf einer JUMA PA-100D sauber sind. Abhilfe ohne Löten: Service-Menü → **Beep Tone = RS-928**,
+siehe [Beep Tone](#beep-tone-service-menü). Alternativ lässt sich der Summer gegen den Typ der JUMA
+tauschen.
 
 Hintergrund: [RS-928-Test im OARC-Wiki](https://wiki.oarc.uk/rs928ampreview).
 

@@ -73,6 +73,11 @@ extern struct
 	struct calval calval;
 	} cal;
 
+extern struct						// DL4JC extension block (Beep Tone)
+	{
+	struct extval extval;
+	} ext;
+
 // A-D converter, see adc12.c
 extern void adc_tick(void);
 extern volatile unsigned int adc_raw[];
@@ -294,6 +299,27 @@ void __attribute__((interrupt, auto_psv)) _T2Interrupt(void)
 	_T2IF = 0;
 	}
 
+/*
+ RS-928 buzzer. The RS-928 clone has a buzzer with its resonance at about 2.7kHz, which only sounds clean between about
+ 2300 and 2800Hz. The JUMA tones of 600 - 2000Hz sound harsh on it, while they are clean on the JUMA. With Beep Tone =
+ RS-928 in the service menu the tones are moved into this range, in the same order. Other values, e.g. from the sound
+ test of the serial test mode, are played unchanged. DL4JC
+*/
+static int rs928_tone(int tone)
+	{
+	switch(tone)
+		{
+		case HZ587_31:	return RS928_HZ2300;
+		case HZ392_01:	return RS928_HZ2450;
+		case HZ466_85:	return RS928_HZ2600;
+		case HZ2000:	return RS928_HZ2700;
+		case HZ698_45:	return RS928_HZ2750;
+		case HZ4000:	return RS928_HZ2800;
+		}
+
+	return tone;
+	}
+
 // Tone set functions
 void tone_on(int tone)				// Set tone, set value = 7,5MHz / tone(Hz) * 2
 	{
@@ -312,7 +338,7 @@ void beep(int tone, int duration)
 	if(busy_counter == 0 && duration > 0)	// Start tone only if tone generator free & duration specified
 		{
 		tone_counter = duration;	// Set tone length
-		tone_on(tone);				// Set tone pitch & start play
+		tone_on((Beep_Tone == 1) ? rs928_tone(tone) : tone);	// Set tone pitch & start play
 		}
 	}
 /*

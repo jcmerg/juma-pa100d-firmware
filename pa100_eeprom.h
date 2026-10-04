@@ -61,7 +61,8 @@ struct extval
 	int bsel_ext;					// Band select mode unknown to the original firmware: 0 = none, 1 = Xiegu, 2 = HR50. The mode is
 									// then stored as F-Sense (Xiegu) or KX2/KX3 (HR50) in defval.bsel_mode, which the original
 									// firmware can use safely.
-	int spare[3];					// Reserved, 0
+	int beep_tone;					// Beep tones: 0 = JUMA, 1 = RS-928 (2300 - 2800Hz, see beep() in timers_pwm.c)
+	int spare[2];					// Reserved, 0
 	unsigned int e_csum;			// Checksum
 	};
 

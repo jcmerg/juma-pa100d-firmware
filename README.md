@@ -77,6 +77,7 @@ serial mode, and can be built with the current Microchip **XC16** compiler.
 - Builds with **MPLAB XC16 v2.10**, no compiler warnings. The configuration bits are identical to the original HEX file. The C30 project files are still included.
 - Linker script: program memory ends **below the boot loader** (0x17D00). The build script refuses to produce a HEX file containing data in the boot loader area.
 - **EEPROM extension block** for the new settings, see [EEPROM](#eeprom-and-compatibility).
+- Service menu **Beep Tone**: tones in the clean range of the RS-928 buzzer, see [Beep Tone](#beep-tone-service-menu).
 - Start-up screen: `JUMA PA100v4.02a` / `OH2NLT/7SV DL4JC`.
 
 The complete technical change history is in the comment header of `juma-pa100.c` (section *DL4JC Modifications*).
@@ -139,6 +140,19 @@ Speed* to the speed of the host (the HR50 USB port defaults to 19200).
 - `HRBR`, `HRTP` and `HRKX` can only be read. Serial speed and temperature scale are set in the menu
   (the temperature scale also sets the alarm and fan limits).
 
+### Beep Tone (service menu)
+
+Service menu (from the off state hold **PWR** until *Calibration Mode* appears), page **"Beep Tone"**
+after *Beep Len*, set with UP/DOWN, save with OPER. A changed setting is played at once.
+
+| Setting | Tones |
+|---|---|
+| **JUMA** (default) | unchanged: 601, 784, 934, 1397 Hz, alarm 2000 Hz |
+| **RS-928** | 2300, 2450, 2600, 2750 Hz, alarm 2700 Hz – for the buzzer of the [RS-928](#buzzer) |
+
+The order of the tones is kept. (The tone names in the source code, e.g. `HZ466_85`, are one octave
+lower than the tones actually played.)
+
 ### Remote control
 
 Unchanged (`=A`, `=Bn`, `=C`, `=Gn`, `=O`, `=Pn`, `=R`, `=S`; status `O:M:R:C: 5:4:0.0:13.81: 0.0:  0.0: 24:0: 0`).
@@ -155,6 +169,7 @@ For the known limitation with polling enabled see [Known limitations](#known-lim
   default values.
 - **Xiegu mode** is stored in the original block as *F-Sense*, and only in the extension block as
   *Xiegu*. **HR50 mode** is stored in the original block as *KX2/KX3*.
+- **Beep Tone** is only stored in the extension block. It is also saved with the service settings.
 
 ### Going back to the original firmware
 
@@ -226,7 +241,7 @@ programmer (see [Recovery](#recovery-with-a-programmer)).
    (The note "keep PWR pressed" in the old TRX-2 instructions predates the power latch, which the
    boot loader has had since 23.01.2007, see `iBL.s` / `mini_lcd-trx2.c`.)
 5. Wait until *dsPIC6014A detected, firmware version 1.1* appears → OK.
-6. *open HEX file* → select `Juma PA-100D v4.02a Build 4-DL4JC.hex`.
+6. *open HEX file* → select `Juma PA-100D v4.02a Build 5-DL4JC.hex`.
 7. Only **"program flash"** may be ticked. **"write data EEPROM" and "configure registers" must not
    be ticked.** There must be no error message (see below).
 8. *start write* → takes approx. 10–15 s at 115200 baud → *write completed*.
@@ -249,7 +264,7 @@ administrator rights. Requirements: Python 3 and pyserial (`pip install pyserial
 serial port check (steps 1 and 2) are the same.
 
 ```
-python3 tools/juma-flash.py --port COM3 "Juma PA-100D v4.02a Build 4-DL4JC.hex"
+python3 tools/juma-flash.py --port COM3 "Juma PA-100D v4.02a Build 5-DL4JC.hex"
 ```
 
 (macOS/Linux: e.g. `--port /dev/cu.usbserial-XXXX` or `/dev/ttyUSB0`; without `--port` the available
@@ -276,7 +291,7 @@ The boot loader source code (`iBL.s`, modified for JUMA by OH2NLT) is in [`bootl
 ## RS-928 clone
 
 This firmware also runs on the **RS-928**, a PA-100D clone whose hardware is practically the same as
-the original. Two things differ:
+the original. Three things differ:
 
 ### First installation: PICkit through header J19
 
@@ -320,6 +335,15 @@ the PTT jack**. The sleeve is ground on both.
 On the **PTT jack** the RS-928 likewise has on the ring what the PA-100D has on the tip, and the
 other way round. Check this before the first transmission, otherwise the amplifier does not key or
 keys permanently. A swapped serial cable only results in silence (no data, no detection in Ingenia).
+
+### Buzzer
+
+The RS-928 buzzer has its resonance at about **2.7 kHz** and only sounds clean between about
+**2300 and 2800 Hz** (measured with the sound test `K` of the serial test mode). The JUMA tones of
+600–2000 Hz therefore sound harsh on the RS-928, with the original firmware as well, while they are
+clean on a JUMA PA-100D. Remedy without soldering: service menu → **Beep Tone = RS-928**, see
+[Beep Tone](#beep-tone-service-menu). Alternatively the buzzer can be replaced with the type used
+in the JUMA.
 
 Background: [RS-928 review in the OARC wiki](https://wiki.oarc.uk/rs928ampreview).
 

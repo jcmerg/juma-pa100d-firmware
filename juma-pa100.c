@@ -608,6 +608,11 @@
    the occasional O/C alarm in the F-Sense mode on the first transmission after a band change, e.g. 40m to 20m, when
    the 20m signal was amplified through the 40m filter until the new band had been measured. There is no additional
    delay when the band is unchanged, so full QSK still works.
+ Build 5-DL4JC
+ - New service menu page "Beep Tone" after "Beep Len": JUMA (default, unchanged) or RS-928. The RS-928 clone has a buzzer
+   that only sounds clean between about 2300 and 2800Hz, so the JUMA tones of 600 - 2000Hz sound harsh on it. RS-928
+   moves the tones into this range, in the same order (see beep() in timers_pwm.c). Stored in the extension block, which
+   is now also saved with the service settings. The alarm beep uses the new constant HZ2000 instead of 1843.
  Build 4-DL4JC
  - New band select mode 7, HR50: the PA-100D answers the serial commands of the HobbyPCB Hardrock-50 amplifier (FA, IF,
    HRBN, HRMD, HRRX, HRTP, HRVT, HRAT, HRBR, HRKX, HRTM), so that programs and transceivers with HR50 support can select
@@ -1329,7 +1334,8 @@ unsigned int read_extval(void)
 		}
 
 	if((checksum != Ext_Checksum) || (ext.extval.magic != EXT_MAGIC) || (ext.extval.version != EXT_VERSION)
-		|| (FSense_QSK < 0) || (FSense_QSK > 1) || (ext.extval.bsel_ext < BSEL_EXT_NONE) || (ext.extval.bsel_ext > BSEL_EXT_HR50))
+		|| (FSense_QSK < 0) || (FSense_QSK > 1) || (ext.extval.bsel_ext < BSEL_EXT_NONE) || (ext.extval.bsel_ext > BSEL_EXT_HR50)
+		|| (Beep_Tone < 0) || (Beep_Tone > 1))
 		{
 		set_ext_defaults();
 		return TRUE;
@@ -1380,6 +1386,8 @@ void save_calval(void)
 		EraseEE(EEPAGE, ((2 * i) + EECAL), WORD);
 		WriteEE((int *)&(cal.ee[i]), EEPAGE, ((2 * i) + EECAL), WORD);	// EEPROM Address 8 high bits, address + physical EEPROM start 16 low bits
 		}
+
+	save_extval();						// The extension block holds the Beep Tone service setting. DL4JC
 	}
 
 // Read calibration values
@@ -2281,7 +2289,7 @@ const char * display_alarms(void)
 		{
 		loop_ctr = LOOP_COUNT;			// reset loop counter for next blink cycle,
 		display_message ^= 1;			// toggle message display flag,
-		beep(1843, ALARM_BEEP);			// and always sound beep for alarms.
+		beep(HZ2000, ALARM_BEEP);		// and always sound beep for alarms.
 		}
 
 	if(display_message)					// If set, display alarm message, in priority order,
@@ -3310,7 +3318,7 @@ int main(void)
 
 		if(!loop_counter)
 			{
-			beep(1843, SHORT_BEEP / 5);
+			beep(HZ2000, SHORT_BEEP / 5);
 			loop_counter = 3125;		// This should give a 10-second loop
 			}
 #endif

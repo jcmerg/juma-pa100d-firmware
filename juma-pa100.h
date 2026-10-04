@@ -7,7 +7,7 @@
 
 // Version Data
 #define VERSION				"v4.02a"
-#define BUILD_NUMBER		"4-DL4JC"
+#define BUILD_NUMBER		"5-DL4JC"
 #define BUILD_DATE			"04/OCT/2026"
 
 // Macro Definitions
@@ -37,10 +37,11 @@
 #define	Cfg_Checksum		eeprom.defval.d_csum		// Shorthand for Configuration Checksum
 #define Enabled_Alarms		cal.calval.alarm_flags		// Shorthand for Enabled Alarms mask
 #define FSense_QSK			ext.extval.fsense_qsk		// Shorthand for F-Sense QSK (extension block)
+#define Beep_Tone			ext.extval.beep_tone		// Shorthand for Beep tones JUMA/RS-928 (extension block)
 #define	Ext_Checksum		ext.extval.e_csum			// Shorthand for Extension block Checksum
 
 //Standard Constants
-#define	MAX_SERVICE_PAGES	13
+#define	MAX_SERVICE_PAGES	14
 #define MAX_LCD_MODE		1				// Last display "main" page
 #define USER_CONFIG_MODE	MAX_LCD_MODE
 #define NORMAL_DISPLAY_MODE	0
@@ -318,11 +319,21 @@
 
 // Tone generator constants, FCY / tone * 2 Both frequencies in Hz
 // Some harmony sounds FCY = 7,3728MHz
+// TMR2 runs without prescaler, so the tone is FCY / (2 * value): the tones below sound one octave higher than their
+// names, e.g. HZ466_85 = 934Hz, and HZ587_31 is 601Hz. The names are kept from the original firmware. DL4JC
 #define HZ392_01			4702		// G, off
 #define HZ466_85			3948		// B-flat, push button standard tone
 #define HZ587_31			6138		// D, fast tune tone
 #define HZ698_45			2639		// F, CW side tone
 #define	HZ4000				921			// 4kHz
+#define HZ2000				1843		// 2kHz, alarm
+// RS-928 buzzer tones, 2300 - 2800Hz, in the same order as the JUMA tones. See beep() in timers_pwm.c. DL4JC
+#define RS928_HZ2300		1603		// for HZ587_31 (601Hz)
+#define RS928_HZ2450		1505		// for HZ392_01 (784Hz)
+#define RS928_HZ2600		1418		// for HZ466_85 (934Hz)
+#define RS928_HZ2700		1365		// for HZ2000 (alarm), at the resonance of the buzzer
+#define RS928_HZ2750		1340		// for HZ698_45 (1397Hz)
+#define RS928_HZ2800		1317		// for HZ4000
 
 // Meter scaling factors, factory defaults
 /*
