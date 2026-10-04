@@ -207,8 +207,10 @@ ein Programmer (siehe [Wiederherstellung](#wiederherstellung-mit-programmer)).
 
 ### 3. Ingenia-Loader installieren
 
-1. `ingeniadsPICbootloader.exe` installieren (Ingenia dsPIC bootloader 1.1, liegt den
-   JUMA-Firmware-Paketen bei).
+1. [`ingeniadsPICbootloader1.1.zip`](https://www.jumaradio.com/juma-trx2/bootloader/ingeniadsPICbootloader1.1.zip) bei JUMA herunterladen und die enthaltene
+   `ingeniadsPICbootloader.exe` installieren (Ingenia dsPIC bootloader 1.1). Der Loader liegt nicht in diesem
+   Repository, da seine Lizenz die Weitergabe nicht erlaubt.
+   SHA-256 der ZIP: `c5664e750d726a0b6049d24004fbc1d6d43b58fd5b68fd37137e2d8486ca9449`
 2. **Gerätedatei ersetzen:** [`tools/ingenia/ibl_dspiclist.xml`](tools/ingenia/ibl_dspiclist.xml) in
    den Installationsordner kopieren und die vorhandene Datei überschreiben, typischerweise
    `C:\Program Files\Ingenia\ingeniadsPICbootloader\` (64-Bit-Windows: `C:\Program Files (x86)\...`).
