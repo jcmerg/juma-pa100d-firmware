@@ -8,8 +8,9 @@ Deutsch | [English](README.md)
 OH2NLT, und Matti Hohtola, OH7SV.
 
 Schwerpunkt dieser Version ist der **Schutz beim Senden** (Endstufe und Tiefpassfilter). Dazu kommen
-mehrere Fehlerbehebungen, die auch v4.01a betreffen, ein **Xiegu**-Bandspannungsmodus und die
-Möglichkeit, mit dem aktuellen Microchip-Compiler **XC16** zu bauen.
+mehrere Fehlerbehebungen, die auch v4.01a betreffen, ein **Xiegu**-Bandspannungsmodus, ein
+**Hardrock-50**-kompatibler serieller Modus und die Möglichkeit, mit dem aktuellen Microchip-Compiler
+**XC16** zu bauen.
 
 > **Keine offizielle JUMA-Version.** Die Nutzung erfolgt auf eigene Verantwortung. Das Aufspielen
 > einer Firmware, die nicht von JUMA stammt, kann Garantie und Support des Herstellers erlöschen
@@ -61,9 +62,10 @@ Möglichkeit, mit dem aktuellen Microchip-Compiler **XC16** zu bauen.
 | Änderung | Wirkung |
 |---|---|
 | **Xiegu-Modus** (neu) | Bandspannungen vom Xiegu-ACC-Anschluss (230-mV-Schritte, inklusive 60 m). Siehe [Tabelle](#xiegu-bandspannungen). |
+| **HR50-Modus** (neu) | Die PA beantwortet die seriellen Befehle der HobbyPCB Hardrock-50: Band, Oper/Standby und Status von Programmen und Transceivern mit HR50-Unterstützung. Siehe [Hardrock-50-Modus](#hardrock-50-modus). |
 | **KX2/KX3 (ASCII)** | Frequenzen über 30 MHz werden vor der 16-Bit-Umrechnung begrenzt. In v4.01a wurden z. B. aus 144 MHz rechnerisch 12,9 MHz, und das **20-m-Filter wurde mit TX-Freigabe** gewählt. |
 | **Juma TRX-2** | Ein ungültiges Band vom TRX-2 ergibt jetzt „unbekannt“ (TX gesperrt) statt 10 m. |
-| **Menüreihenfolge** | Yaesu CAT → KX2/KX3 → Juma-TRX2 → F-Sense → FT817/818 → **Xiegu** → Manual |
+| **Menüreihenfolge** | Yaesu CAT → KX2/KX3 → **HR50** → Juma-TRX2 → F-Sense → FT817/818 → **Xiegu** → Manual |
 
 ### Serielle Schnittstelle
 
@@ -106,6 +108,35 @@ Eingang wie bei der FT-817-Bandspannung. Schaltschwellen mittig zwischen den Stu
 
 Geräte mit Yaesu-Bandspannungen (z. B. Brick2/3) nutzen wie bisher den Modus **FT817/818**.
 
+### Hardrock-50-Modus
+
+*Auto Band Detect = HR50*: Die PA verhält sich am seriellen Port wie eine HobbyPCB Hardrock-50.
+Programme und Transceiver mit HR50-Unterstützung können das Band wählen, zwischen Oper und Standby
+umschalten und den Status lesen. Der Port spricht dann nur HR50: JUMA-Fernsteuerung, Serial-Test und
+Polling sind aus, die Seiten *Serial Port* und *Polling Interval* werden ausgeblendet. *Serial Speed*
+auf die Geschwindigkeit des Hosts stellen (der USB-Port der HR50 steht ab Werk auf 19200).
+
+| Befehl | Funktion |
+|---|---|
+| `FAxxxxxxxxxxx;` | Frequenz in Hz, wählt das Band. Kenwood-`IF…;`-Daten werden genauso ausgewertet. |
+| `HRBNn;` / `HRBN;` | Band setzen / lesen: 0 = 6 m, 1 = 10 m, 2 = 12 m, 3 = 15 m, 4 = 17 m, 5 = 20 m, 6 = 30 m, 7 = 40 m, 8 = 60 m, 9 = 80 m, 10 = 160 m, 99 = unbekannt |
+| `HRMDn;` / `HRMD;` | 1 = PTT (Oper), 0 = OFF (Standby). 2 (COR) und 3 (QRP) schalten auf Standby. |
+| `HRRX;` | Status, z. B. `RX,PTT,20M,27C,13.8V;` |
+| `HRTP;` / `HRVT;` | Temperatur `HRTP27C;` / Versorgungsspannung `HRVT13.8V;` |
+| `HRAT;` / `HRKX;` / `HRBR;` | `HRAT0;` (kein ATU) / `HRKX0;` / serielle Geschwindigkeit 0–3 (4800–38400) |
+| `HRTM…;` | ATU-Durchreichung, Antwort `HRTM;` wie bei einer HR50 ohne ATU |
+
+- Befehle enden mit `;`, Groß- oder Kleinschreibung. Antworten enden mit `;\r\n`. Wie bei der HR50
+  werden SET-Befehle nicht beantwortet.
+- Befehlssatz und Antwortformate folgen dem Quellcode der HR50-Firmware V3.0
+  ([github.com/hobbypcb/hardrock-50](https://github.com/hobbypcb/hardrock-50)). Im HR50-Handbuch
+  sind 15 m und 17 m in der `HRBN`-Tabelle vertauscht.
+- Das Band bleibt erhalten, bis der Host ein neues schickt; die PA fragt nie nach. 6 m und
+  „unbekannt“ sperren TX, 60 m nutzt das 40-m-Filter. Der Filterschutz arbeitet wie in den anderen
+  Modi.
+- `HRBR`, `HRTP` und `HRKX` lassen sich nur lesen. Geschwindigkeit und Temperaturskala werden im Menü
+  eingestellt (die Temperaturskala setzt auch die Alarm- und Lüftergrenzen).
+
 ### Fernsteuerung
 
 Unverändert (`=A`, `=Bn`, `=C`, `=Gn`, `=O`, `=Pn`, `=R`, `=S`; Status `O:M:R:C: 5:4:0.0:13.81: 0.0:  0.0: 24:0: 0`).
@@ -121,6 +152,7 @@ Zur bekannten Einschränkung mit Polling siehe [Bekannte Einschränkungen](#beka
   Kennung, Versionsnummer und CRC. Fehlt er (erster Start) oder ist er ungültig, bekommen nur die
   neuen Einstellungen ihre Standardwerte.
 - Der **Xiegu-Modus** steht im Original-Block als *F-Sense* und nur im Erweiterungsblock als *Xiegu*.
+  Der **HR50-Modus** steht im Original-Block als *KX2/KX3*.
 
 ### Zurück zur Original-Firmware
 
@@ -130,6 +162,7 @@ Jederzeit möglich, ohne Vorbereitung und ohne Verlust der Kalibrierung:
 |---|---|
 | Kalibrierung, alle Original-Einstellungen | unverändert übernommen |
 | Xiegu | F-Sense (Bandwahl über Frequenzmessung, funktioniert mit jedem Transceiver) |
+| HR50 | KX2/KX3 (Band aus den `FA`-Frequenzdaten, Polling aus); die `HR…`-Befehle werden ignoriert |
 | F-Sense QSK | ignoriert |
 
 Das Original-HEX liegt im Repo: `Juma PA-100D.hex` (v4.01a Build 3).
@@ -191,7 +224,7 @@ ein Programmer (siehe [Wiederherstellung](#wiederherstellung-mit-programmer)).
    stammt aus der Zeit vor der Selbsthaltung, die der Bootloader seit 23.01.2007 hat, siehe `iBL.s` /
    `mini_lcd-trx2.c`.)
 5. Warten, bis *dsPIC6014A detected, firmware version 1.1* erscheint → OK.
-6. *open HEX file* → `Juma PA-100D v4.02a Build 3-DL4JC.hex` wählen.
+6. *open HEX file* → `Juma PA-100D v4.02a Build 4-DL4JC.hex` wählen.
 7. Nur **„program flash“** darf angehakt sein. **„write data EEPROM“ und „configure registers“ dürfen
    nicht angehakt sein.** Es darf keine Fehlermeldung erscheinen (siehe unten).
 8. *start write* → dauert bei 115200 Baud ca. 10–15 s → *write completed*.
@@ -282,8 +315,10 @@ Zuerst mit Dummy-Load und kleiner Leistung.
 6. **F-Sense QSK** Off/On, SSB und CW auf einem Band: keine Aussetzer.
 7. **Xiegu:** jedes Band prüfen (Serial-Test `A` zeigt Spannung und erkanntes Band).
 8. **Watchdog:** beim Senden OPER länger als 2 s halten → TX fällt ab.
-9. **Einstellungen:** *F-Sense QSK* bzw. Xiegu ändern, speichern, aus- und einschalten → die
+9. **Einstellungen:** *F-Sense QSK*, Xiegu bzw. HR50 ändern, speichern, aus- und einschalten → die
    Einstellung bleibt erhalten.
+10. **HR50:** im Terminal `FA00014060000;`, `HRBN;` (→ `HRBN5;`), `HRMD1;`, `HRRX;` senden und Band,
+    OPER und Status prüfen; danach mit dem Host-Programm bzw. Transceiver, der benutzt werden soll.
 
 ---
 
@@ -347,6 +382,8 @@ nicht getestet.
   Millisekunden mit schlecht unterdrückten Oberwellen (die Frequenz lässt sich erst messen, wenn HF
   anliegt). Wem das wichtig ist: Einstellung auf **Off** lassen oder nach einem Bandwechsel zuerst
   kurz mit kleiner Leistung tasten.
+- **HR50-Modus** ist gegen den Quellcode der HR50-Firmware geprüft, aber noch nicht mit jedem
+  Programm, das die HR50 unterstützt. Rückmeldungen mit Programmname sind willkommen.
 - **Fernsteuerung mit Polling:** Wie in v4.01a läuft der Remote-Timeout bei eingeschaltetem Polling
   nie ab, weil jede automatische Statusmeldung ihn neu startet. Ein ausgefallener Remote-Host wird
   deshalb nicht erkannt. Das ist bewusst so belassen, damit bestehende Fernsteuer-Programme weiter

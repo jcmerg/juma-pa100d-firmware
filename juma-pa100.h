@@ -7,7 +7,7 @@
 
 // Version Data
 #define VERSION				"v4.02a"
-#define BUILD_NUMBER		"3-DL4JC"
+#define BUILD_NUMBER		"4-DL4JC"
 #define BUILD_DATE			"04/OCT/2026"
 
 // Macro Definitions
@@ -139,7 +139,9 @@
 #define FT_817				4
 #define MANUAL				5
 #define XIEGU				6			// Xiegu ACC port band voltage. Added after MANUAL so that saved settings remain valid.
-#define MAX_BSEL_MODE		XIEGU		// Last band select mode
+#define HR50				7			// Hardrock-50 serial protocol emulation, see serial_hr50()
+#define MAX_BSEL_MODE		HR50		// Last band select mode
+#define BAND_FROM_SERIAL	((Band_Select_Mode < FREQ_SENSE) || (Band_Select_Mode == HR50))	// The serial port carries the band data
 #define REMOTE				1			// Remote control operation
 #define SERIAL_TEST			2			// Serial Test mode
 #define MANUAL_BAND			0
@@ -429,6 +431,7 @@
 #define EXT_VERSION			1
 #define BSEL_EXT_NONE		0			// ext.extval.bsel_ext values
 #define BSEL_EXT_XIEGU		1
+#define BSEL_EXT_HR50		2
 
 // PA100 board I/O definitions
 // Port A Switches

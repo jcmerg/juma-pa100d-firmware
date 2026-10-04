@@ -608,6 +608,11 @@
    the occasional O/C alarm in the F-Sense mode on the first transmission after a band change, e.g. 40m to 20m, when
    the 20m signal was amplified through the 40m filter until the new band had been measured. There is no additional
    delay when the band is unchanged, so full QSK still works.
+ Build 4-DL4JC
+ - New band select mode 7, HR50: the PA-100D answers the serial commands of the HobbyPCB Hardrock-50 amplifier (FA, IF,
+   HRBN, HRMD, HRRX, HRTP, HRVT, HRAT, HRBR, HRKX, HRTM), so that programs and transceivers with HR50 support can select
+   the band and the Operate/Standby state, and read the status. (See serial_hr50()) The mode is stored as KX2/KX3 in the
+   original configuration block, with HR50 in the extension block. The original firmware then uses the FA frequency data.
  Build 3-DL4JC
  - New User Configuration page "F-Sense QSK", only shown in the F-Sense mode. Off (default): TX is only enabled once the
    input frequency has been measured in the current transmission, approx. 20-40mS without the PA at the start of each
@@ -766,7 +771,8 @@ const char *f_sense[] = {				// Frequency Sense Mode Indexed by: Band_Select_Mod
 							"F-Sense",	// 3 - Automatic frequency measurement
 							"FT817/818",// 4 - Yaesu 5-Byte Binary
 							"Manual",	// 5 - Manual band selection - NO PROTECTION!
-							"Xiegu"		// 6 - Xiegu ACC port band voltage
+							"Xiegu",	// 6 - Xiegu ACC port band voltage
+							"HR50"		// 7 - Hardrock-50 serial protocol
 							};
 
 const char *auto_man[] = {				// Indexed by: Auto_Manual
@@ -1252,18 +1258,19 @@ void set_factory_defaults(void)
 
 // Save defaults
 /*
- Band select modes that the original firmware does not know (Xiegu) are stored as F-Sense, with the actual mode in the
- extension block. If the original firmware is loaded again it then uses F-Sense, which works with any transceiver and
- protects the filters. See load_ext_modes(). DL4JC
+ Band select modes that the original firmware does not know are stored as a mode it knows, with the actual mode in the
+ extension block. Xiegu is stored as F-Sense, which works with any transceiver and protects the filters. HR50 is stored
+ as KX2/KX3, which uses the same FA frequency data. See load_ext_modes(). DL4JC
 */
 void save_defval(void)
 	{
 	int i;
 	int mode = Band_Select_Mode;
 
-	ext.extval.bsel_ext = (mode == XIEGU) ? BSEL_EXT_XIEGU : BSEL_EXT_NONE;
+	ext.extval.bsel_ext = (mode == XIEGU) ? BSEL_EXT_XIEGU : (mode == HR50) ? BSEL_EXT_HR50 : BSEL_EXT_NONE;
 
 	if(mode == XIEGU) Band_Select_Mode = FREQ_SENSE;	// Value stored in the original configuration block
+	if(mode == HR50) Band_Select_Mode = ELECRAFT_KX3;
 
 	Cfg_Checksum = 0;
 
@@ -1322,7 +1329,7 @@ unsigned int read_extval(void)
 		}
 
 	if((checksum != Ext_Checksum) || (ext.extval.magic != EXT_MAGIC) || (ext.extval.version != EXT_VERSION)
-		|| (FSense_QSK < 0) || (FSense_QSK > 1) || (ext.extval.bsel_ext < BSEL_EXT_NONE) || (ext.extval.bsel_ext > BSEL_EXT_XIEGU))
+		|| (FSense_QSK < 0) || (FSense_QSK > 1) || (ext.extval.bsel_ext < BSEL_EXT_NONE) || (ext.extval.bsel_ext > BSEL_EXT_HR50))
 		{
 		set_ext_defaults();
 		return TRUE;
@@ -1336,6 +1343,9 @@ void load_ext_modes(void)
 	{
 	if((Band_Select_Mode == FREQ_SENSE) && (ext.extval.bsel_ext == BSEL_EXT_XIEGU))
 		Band_Select_Mode = XIEGU;
+
+	if((Band_Select_Mode == ELECRAFT_KX3) && (ext.extval.bsel_ext == BSEL_EXT_HR50))
+		Band_Select_Mode = HR50;
 	}
 
 // Read defaults
@@ -1518,10 +1528,22 @@ int get_band(unsigned frequency)
 	return i;
 	}
 
+// Band for an ASCII frequency in Hz, as in the FA and IF data packets
+int ascii_freq_band(char *digits)
+	{
+	long freq;
+
+	freq = (atol(digits) + 500L) / 1000L;	// Convert to nearest kHz
+
+	if(freq > 30000L)						// Check limit before the cast to unsigned int, otherwise e.g. 144MHz
+		freq = 30002L;						// would wrap to 12.9MHz and select the 20m filter.
+
+	return get_band((unsigned int)freq);
+	}
+
 void serial_kx3(void)				// Serial Data Handler
 	{
 	char c;
-	long freq;
 /*
  First check to see if the polling timer has timed out, or if the not_used flag is set. The not_used
  flag is set if this is the first time we have checked, or if the manual band switch has been pressed,
@@ -1606,17 +1628,164 @@ void serial_kx3(void)				// Serial Data Handler
 				if(Poll_Time)
 					poll_resp_rec = TRUE;			// If polling is enabled, set the poll response received flag.
 
-				freq = (atol((char *)cmd_buf + 2) + 500L) / 1000L;	// Convert to nearest kHz
-
-				if(freq > 30000L)					// Check limit before the cast to unsigned int, otherwise e.g. 144MHz
-					freq = 30002L;					// would wrap to 12.9MHz and select the 20m filter.
-
-				Current_Band = get_band((unsigned int)freq);
+				Current_Band = ascii_freq_band((char *)cmd_buf + 2);
 				cmd_timeout = 0;					// Reset the message timer,
 				clear_buffer();						// reset the buffer and index, and restart.
 				}	// End IF
 			}	// End ELSE
 		}	// End IF
+	}
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Hardrock-50 Protocol Emulation
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/*
+ In the HR50 band select mode the PA-100D answers the serial commands of the HobbyPCB Hardrock-50 amplifier, so that
+ programs and transceivers that support the HR50 can be used. The commands and the reply formats follow the HR50 firmware
+ V3.0 (github.com/hobbypcb/hardrock-50, uart.c and config.c), which differs from the manual in places, e.g. HRBN 3 = 15m
+ and 4 = 17m. Commands end with ';' and may be upper or lower case. Replies are upper case and end with ";\r\n". As with
+ the HR50, a SET command is not answered, and a GET command is the command letters without data.
+
+	FAxxxxxxxxxxx;	Frequency in Hz, selects the band. IFxxxxxxxxxxx...; (Kenwood IF data) is used in the same way.
+	HRBN; HRBNn;	Band, HR50 numbering: 0 = 6m, 1 = 10m, 2 = 12m, 3 = 15m, 4 = 17m, 5 = 20m, 6 = 30m, 7 = 40m, 8 = 60m,
+					9 = 80m, 10 = 160m, 99 = unknown.
+	HRMD; HRMDn;	Keying mode, 0 = OFF (Standby), 1 = PTT (Operate). 2 (COR) and 3 (QRP) select Standby: the PA-100D has
+					no COR keying, and the HR50 without ATU does not accept QRP either.
+	HRRX;			Status, RX,<mode>,<band>,<temp>,<voltage>; e.g. RX,PTT,20M,27C,13.8V;
+	HRTP;			Heat-sink temperature, e.g. HRTP27C;
+	HRVT;			Supply voltage, e.g. HRVT13.8V;
+	HRAT;			ATU mode, always 0 = not present.
+	HRBR;			Serial speed, 0 = 4800, 1 = 9600, 2 = 19200, 3 = 38400. Other speeds report the nearest value.
+	HRKX;			KX3 inverted data, always 0.
+	HRTM...;		ATU pass-through, answered with HRTM; as by an HR50 without ATU.
+
+ The serial speed, the temperature scale and the KX3 mode cannot be changed by a command (HRBR, HRTP and HRKX SET are
+ ignored). They are set in the User Configuration menu, where the temperature scale also sets the alarm and fan limits.
+
+ Bands the PA-100D cannot amplify (6m, unknown) set NOT_KNOWN, which inhibits TX. 60m uses the 40m filter, and FA/IF
+ frequencies are assigned with band_limits[], as in the other modes. As with the HR50, nothing is transmitted except
+ the replies, the transceiver is not polled, and the band is held until the host sends a new one. DL4JC
+*/
+#define HR_CMD(a, b)	(((a) << 8) | (b))		// Two command letters after HR as one value for switch()
+
+const int hr50_to_band[] = {NOT_KNOWN, 9, 8, 7, 6, 5, 4, 3, 3, 2, 1};	// Indexed by: HR50 band number 0 - 10
+const int band_to_hr50[] = {99, 10, 9, 7, 6, 5, 4, 3, 2, 1, 99};		// Indexed by: Current_Band
+const char *hr50_band_txt[] = {"UNK", "160", "80M", "40M", "30M", "20M", "17M", "15M", "12M", "10M", "UNK"};	// Indexed by: Current_Band
+const char *hr50_mode_txt[] = {"OFF", "PTT"};							// Indexed by: pa_state
+
+// Execute a complete command in cmd_buf, without the terminating ';'
+void hr50_command(void)
+	{
+	char reply[40];
+	char *p = reply;
+	char *arg = (char *)cmd_buf + 4;				// Data after HRxx
+	int n;
+	double volts;
+
+	reply[0] = 0;
+	volts = (double)batt_raw * (double)Voltmeter_Cal / 1000000.0;
+
+	if(((cmd_buf[0] == 'F') && (cmd_buf[1] == 'A')) || ((cmd_buf[0] == 'I') && (cmd_buf[1] == 'F')))
+		{
+		if(cmd_buf_idx < 13) return;				// FA; or a short packet, no frequency.
+
+		cmd_buf[13] = 0;							// 11 digits, Hz. The IF packet continues with other data.
+		Current_Band = ascii_freq_band((char *)cmd_buf + 2);
+		return;
+		}
+
+	if((cmd_buf[0] != 'H') || (cmd_buf[1] != 'R')) return;	// Not for us, e.g. other CAT traffic on the same line.
+
+	switch(HR_CMD(cmd_buf[2], cmd_buf[3]))
+		{
+		case HR_CMD('B', 'N'):						// Band
+			if(!*arg)
+				sprintf(reply, "HRBN%d", band_to_hr50[Current_Band]);
+			else if(isdigit(*arg))
+				{
+				n = atoi(arg);
+				Current_Band = ((n >= 0) && (n <= 10)) ? hr50_to_band[n] : NOT_KNOWN;	// n < 0: atoi() overflow
+				}
+		break;
+
+		case HR_CMD('M', 'D'):						// Keying mode
+			if(!*arg)
+				sprintf(reply, "HRMD%d", pa_state);
+			else if(isdigit(*arg))
+				pa_state = (*arg == '1') ? OPERATE : STANDBY;
+		break;
+
+		case HR_CMD('R', 'X'):						// Status
+			if(!*arg)
+				sprintf(reply, "RX,%s,%s,%d%c,%.1fV", hr50_mode_txt[pa_state], hr50_band_txt[Current_Band],
+					scaled_pa_temp, T_Char[Temp_Scale], volts);
+		break;
+
+		case HR_CMD('T', 'P'):						// Temperature
+			if(!*arg) sprintf(reply, "HRTP%d%c", scaled_pa_temp, T_Char[Temp_Scale]);
+		break;
+
+		case HR_CMD('V', 'T'):						// Supply voltage
+			if(!*arg) sprintf(reply, "HRVT%.1fV", volts);
+		break;
+
+		case HR_CMD('A', 'T'):						// ATU, not present
+			if(!*arg) sprintf(reply, "HRAT0");
+		break;
+
+		case HR_CMD('B', 'R'):						// Serial speed, index 2 = 4800 ... 5 = 38400
+			if(!*arg)
+				{
+				n = eeprom.defval.br - 2;
+
+				if(n < 0) n = 0;
+				if(n > 3) n = 3;
+
+				sprintf(reply, "HRBR%d", n);
+				}
+		break;
+
+		case HR_CMD('K', 'X'):						// KX3 inverted data, not used
+			if(!*arg) sprintf(reply, "HRKX0");
+		break;
+
+		case HR_CMD('T', 'M'):						// ATU pass-through, no ATU
+			sprintf(reply, "HRTM");
+		break;
+		}
+
+	if(!*p) return;									// SET commands are not answered.
+
+	while(*p) putch(*p++);
+
+	putch(';');
+	putch('\r');
+	putch('\n');
+	}
+
+void serial_hr50(void)
+	{
+	char c;
+
+	while(kbhit())
+		{
+		c = toupper(getch());
+
+		if(cmd_buf_idx && !cmd_timeout) clear_buffer();		// Incomplete command timed out, start again.
+
+		if(c == ';')										// End of command,
+			{
+			hr50_command();									// so execute it,
+			clear_buffer();									// and start again.
+			}
+		else if(cmd_buf_idx || isalpha(c))					// CR, LF and spaces between commands are ignored.
+			{
+			cmd_timeout = msg_time;							// Time-out for the next character
+
+			if(cmd_buf_idx < (MAX_BUFFER - 1))				// Longer commands (IF) are truncated, only their start is used.
+				cmd_buf[cmd_buf_idx++] = c;					// The last byte remains 0 and terminates the data.
+			}
+		}
 	}
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -2057,7 +2226,8 @@ void remote(void)
  Setting the address of rs232_mode here avoids having to do numerous loop invariant address calculations.
  This somewhat complex logic sets the address of the function to be executed as follows:
  If the Yaesu 5-Byte Binary mode is selected, then set the address to get_yaesu. If the ASCII protocol is selected, then set the address
- to serial_kx3. If the Juma TRX-2 mode is selected set the address to serial_pa100. If the REMOTE mode is selected set the address to
+ to serial_kx3. If the Juma TRX-2 mode is selected set the address to serial_pa100, and in the HR50 mode to serial_hr50. If the
+ REMOTE mode is selected set the address to
  remote. If the TEST mode is selected set the address to serial_test, and if none of these modes is selected, then just keep clearing the
  buffer, effectively discarding any received characters.
 */
@@ -2069,6 +2239,8 @@ void _rs232_mode(void)
 				? serial_kx3
 				: (Band_Select_Mode == JUMA_TRX2)
 				? serial_pa100
+				: (Band_Select_Mode == HR50)
+				? serial_hr50
 				: (Serial_Test_Mode == REMOTE)
 				? remote
 				: (Serial_Test_Mode == SERIAL_TEST)
@@ -2569,6 +2741,10 @@ void manual_band(void)
 	Auto_Manual = MANUAL_BAND;
 	}
 
+void hold_band(void)		// HR50 mode: the band is held until the host sends a new one, see serial_hr50().
+	{
+	}
+
 void (*select_auto_band[])(void) = {					// Indexed by: Band_Select_Mode
 									check_polling,		// 0 Yaesu 5-Byte Binary (FT-817/FT-818)
 									check_polling,		// 1 KX-3
@@ -2576,7 +2752,8 @@ void (*select_auto_band[])(void) = {					// Indexed by: Band_Select_Mode
 									eval_band,			// 3 Frequency Sense Mode
 									eval_y817_band,		// 4 FT-817 Mode
 									manual_band,		// 5 Manual Band Selection
-									eval_xiegu_band		// 6 Xiegu Mode
+									eval_xiegu_band,	// 6 Xiegu Mode
+									hold_band			// 7 HR50 Mode
 									};
 
 int scaled_temperature(double t)
@@ -2718,9 +2895,9 @@ void get_one_zero(int *value)
  Menu order of the band select modes. The stored values are unchanged (MANUAL = 5, XIEGU = 6), so that the saved settings
  remain compatible with the original firmware, but the menu shows Xiegu before Manual. DL4JC
 */
-const int bsel_menu[] = {YAESU, ELECRAFT_KX3, JUMA_TRX2, FREQ_SENSE, FT_817, XIEGU, MANUAL};
+const int bsel_menu[] = {YAESU, ELECRAFT_KX3, HR50, JUMA_TRX2, FREQ_SENSE, FT_817, XIEGU, MANUAL};
 
-void cfg_0(void)	// Auto band select mode (0 = Yaesu CAT, 1 = Elecraft KX-3, 2 = Juma TRX-2, 3 = F-Sense, 4 = FT-817, 5 = Manual, 6 = Xiegu)
+void cfg_0(void)	// Auto band select mode (0 = Yaesu CAT, 1 = Elecraft KX-3, 2 = Juma TRX-2, 3 = F-Sense, 4 = FT-817, 5 = Manual, 6 = Xiegu, 7 = HR50)
 	{
 	static int current_mode;
 	int pos = 0;
@@ -2739,6 +2916,9 @@ void cfg_0(void)	// Auto band select mode (0 = Yaesu CAT, 1 = Elecraft KX-3, 2 =
 
 		if(Band_Select_Mode == JUMA_TRX2)		// If the TRX-2 mode is selected,
 			Poll_Time = DISABLED;				// then disable the polling timer. This can still be over-ridden.
+
+		if(Band_Select_Mode == HR50)			// The HR50 mode does not poll. Polling is also disabled for the original
+			Poll_Time = DISABLED;				// firmware, which reads this mode as KX2/KX3, see save_defval().
 
 		if(Band_Select_Mode == MANUAL)
 			Current_Band = MAX_BAND;			// Ensure that we have a valid band selected.
@@ -2930,8 +3110,11 @@ void change_cfg_page(int direction)
 	if((Band_Select_Mode > 2) && (Serial_Test_Mode != REMOTE) && (sub_page1 == 3))		// if the F-SENSE/FT-817 Modes are selected, and Serial Port is not in REMOTE,
 		sub_page1 += direction;							// then skip the Polling Timer page
 
-	if((Band_Select_Mode < 3) && (sub_page1 == 2))		// JUMA-TRX2/KX3/YAESU Mode and 
+	if(BAND_FROM_SERIAL && (sub_page1 == 2))			// JUMA-TRX2/KX3/YAESU/HR50 Mode and
 		sub_page1 += direction;							// then skip the Serial Test On/Off page
+
+	while((Band_Select_Mode == HR50) && ((sub_page1 == 2) || (sub_page1 == 3)))	// The HR50 mode also skips the Polling Timer page,
+		sub_page1 += direction;													// in both directions.
 
 	if(sub_page1 > MAX_SUB_PAGE1) sub_page1 = 0;
 	if(sub_page1 < 0) sub_page1 = MAX_SUB_PAGE1;
@@ -3013,7 +3196,7 @@ int main(void)
 
 	load_ext_modes();					// Restore a band select mode stored in the extension block (Xiegu)
 
- 	if((Serial_Test_Mode == SERIAL_TEST) && (Band_Select_Mode > 2))
+ 	if((Serial_Test_Mode == SERIAL_TEST) && !BAND_FROM_SERIAL)
 		printf(EEPROM_Chksum, checksum_msg[y], checksum_msg[w], fd_counter);
 
 	if(y || w)						// Test return flags. If either is non-zero, then there is an EEPROM read fault
@@ -3084,7 +3267,7 @@ int main(void)
 // Set user baud rate
 	SetUSART1baud(eeprom.defval.br);
 // Conditional start up text printout, print only if Serial Test Mode is On
-  	if((Serial_Test_Mode == SERIAL_TEST) && (Band_Select_Mode > 2))
+  	if((Serial_Test_Mode == SERIAL_TEST) && !BAND_FROM_SERIAL)
 		display_hdr();
 // RS-232 I/O Test
 	if(!DISP) rs232_test();							// If DISPLAY pressed during startup, Goto RS-232 test loop.
