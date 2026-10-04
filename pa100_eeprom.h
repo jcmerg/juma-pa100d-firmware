@@ -8,7 +8,7 @@ struct defval
 	{
 	int rf_gain[11];				// RF Gain setting for each band. Bands 0 and 10 are UNKNOWN, and set to 0, Valid bands are 1 to 9.
 	int band;						// Selected band
-	int bsel_mode;					// Auto band select mode, 0 = Juma TRX-2, 1 = Elecraft KX3, 2 = Frequency-Sense, 3 = FT817 Analog Voltage
+	int bsel_mode;					// Auto band select mode, 0 = Yaesu CAT, 1 = KX2/KX3, 2 = Juma TRX-2, 3 = F-Sense, 4 = FT817 Analog Voltage, 5 = Manual, 6 = Xiegu Analog Voltage
 	int poll_timer;					// Juma TRX-2/Elecraft KX3 Polling Interval Timer
 	int contrast;					// LCD display contrast, pwm4
 	int back_light;					// LCD back light, pwm3 

@@ -28,6 +28,7 @@ extern int convert_adc12(unsigned int);			// ADC
 extern void ms_delay(unsigned int);				// General delay
 extern void beep(int, int);						// Added - 5B4AIY
 extern int get_817_band(int);					// Get Yaesu 817 band data
+extern int get_xiegu_band(int);					// Get Xiegu band data
 extern void display_hdr(void);
 extern void save_defaults();
 extern void save_calval();
@@ -182,7 +183,9 @@ void ad_msg2(double factor)
 	{
 	int i;
 
-	i = get_817_band((int)factor);
+	i = (Band_Select_Mode == XIEGU)				// Show the band for the selected voltage table.
+		? get_xiegu_band((int)factor)
+		: get_817_band((int)factor);
 	printf("%3i - %s", i, y817[i]);
 	}
 

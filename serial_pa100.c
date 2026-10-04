@@ -109,7 +109,7 @@ void serial_pa100(void)
 					cmd_buf[cmd_buf_idx] = c;			// terminate the buffer,
 					Current_Band = atoi(cmd_buf + 2);	// and get the new band,
 
-					if(Current_Band < 1 || Current_Band > 9) Current_Band = 9;	// check the new band for validity,
+					if(Current_Band < MIN_BAND || Current_Band > MAX_BAND) Current_Band = NOT_KNOWN;	// check the new band for validity, an invalid band inhibits TX,
 
 					poll_resp_rec = TRUE;	// and set the polling response flag.
 					}						// If it is not the end-of-message byte,

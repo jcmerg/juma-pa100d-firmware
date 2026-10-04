@@ -16,6 +16,15 @@ extern void lcd_cmd(unsigned char);
 
 int w0,w1,w2,w3,w4,w5,w6,w7,w8,w9,w10,w11,w12,w13,w14,w15;	// Temp save for registers
 
+// Force the amplifier into a safe state. Called first in every trap handler, as the main loop
+// (alarm checks, TX_ON control) and all interrupts are dead once a trap has occurred.
+void safe_state(void)
+	{
+	TX_ON = 0;						// RF off
+	FAN1 = 1;						// Fan high speed, cool down the PA
+	FAN2 = 1;
+	}
+
 void lcd_error_message(int err)		// Moved to here to avoid forward references - 5B4AIY
 	{
 	clear_lcd();
@@ -56,6 +65,8 @@ void lcd_error_message(int err)		// Moved to here to avoid forward references - 
 void __attribute__ ((interrupt)) _OscillatorFail(void)
 	{
 	int x;
+
+	safe_state();
 //	DI();
  	U1BRG = ((8000000 / 16) / 9600) - 1;		// Try to set set UART1 baud rate to 9600
 
@@ -91,6 +102,7 @@ void __attribute__ ((interrupt)) _AddressError(void)
 	asm("mov w13, _w13");
 	asm("mov w14, _w14");
 	asm("mov w15, _w15");
+	safe_state();
 
 	printf("\n\rTRAP: Address Error\n\r");
 
@@ -120,6 +132,7 @@ void __attribute__ ((interrupt)) _StackError(void)
 //	DI();
 	asm("mov w15, _w15");
 	asm("mov #0x900, w15");			// New temporary stack from hat
+	safe_state();
 
 	printf("\n\rTRAP: Stack Error\n\r");
 	printf("W15 0x%X\n\r", w15);
@@ -130,6 +143,7 @@ void __attribute__ ((interrupt)) _StackError(void)
 
 void __attribute__ ((interrupt)) _MathError(void)
 	{
+	safe_state();
 //	DI();
 	printf("\n\rTRAP: Math Error\n\r");
 
@@ -139,6 +153,7 @@ void __attribute__ ((interrupt)) _MathError(void)
 
 void __attribute__ ((interrupt)) _DefaultInterrupt(void)
 	{
+	safe_state();
 	_INT4IE = 0;
 	_DCIIE = 0;
 	printf("\n\rTRAP: Spurious Interrupt Error\n\r");

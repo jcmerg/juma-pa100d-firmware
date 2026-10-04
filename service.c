@@ -46,6 +46,7 @@ extern const char *on_off[];
 extern const char *auto_man[];
 extern const char *bs_txt[];
 extern unsigned int AD_Values[];	// A-D converter samples
+extern volatile unsigned int main_heartbeat;	// Main loop watchdog, see tx_guard() in timers_pwm.c
 
 // Local Data
 const char trip_fmt[] = {"Trip:%11s"};
@@ -322,12 +323,13 @@ void service(int service_mode)
 
 	do	{
 // TX request
+		main_heartbeat = 0;				// Service loop is running, see tx_guard() in timers_pwm.c
 		key = KEY;						// Copy I/O bit to status flag
 // Do measurements & check alarms
 		analog_measurements();
 		check_alarms();
 
-		if(alarms) svc_flag = FALSE;	// Exit service mode
+		if(alarms) service_mode = svc_flag = FALSE;	// Exit service mode (the loop tests service_mode, not svc_flag)
 		else
 			{
 // Auto band select

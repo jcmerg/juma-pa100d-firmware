@@ -68,6 +68,79 @@ extern struct
 	struct defval defval;
 	} eeprom;
 
+extern struct
+	{
+	struct calval calval;
+	} cal;
+
+// A-D converter, see adc12.c
+extern void adc_tick(void);
+extern volatile unsigned int adc_raw[];
+
+// TX protection, see tx_guard()
+#define MAIN_TIMEOUT	2000		// mS without a main loop cycle before RF is forced off
+#define KEY_OFF_TICKS	2			// KEY must be inactive for this many mS before RF is forced off
+
+volatile unsigned int main_heartbeat = 0;	// mS since the main or service loop last ran, reset by those loops
+volatile int isr_swr_trip = FALSE;			// Set here, transferred to the alarms in check_alarms()
+
+static unsigned long fwd_sum, rev_sum;		// SWR measurement sums
+static int swr_count;						// Number of samples in the sums
+static int key_off_count;					// Number of consecutive mS that KEY has been inactive
+/*
+ TX Protection
+ Previously all the protection was in the main loop. Whenever the main loop was blocked, for example waiting for a button
+ to be released, a save prompt, or a serial test command, the alarms were not checked and TX_ON stayed in whatever state
+ it was. This function is called every 1mS from _T3Interrupt() and forces TX_ON off if:
+
+	KEY has been inactive for KEY_OFF_TICKS mS (the transceiver has stopped transmitting),
+	the SWR exceeds the trip limit (only in the OPERATE state, as in check_alarms()),
+	there is an active alarm (except the Low-Voltage pre-limit warning),
+	the main loop has not run for MAIN_TIMEOUT mS.
+
+ It never turns TX_ON on, that remains the responsibility of the main loop. The main loop turns it on again when the
+ condition has cleared, KEY is active, and there are no alarms.
+
+ The SWR test uses the same averaging as analog_measurements(): cal.calval.samples pairs, with the low power offset added
+ to the forward value. Rather than calculate the SWR, the reflection coefficient is compared with that of the trip limit:
+
+	SWR > T  <=>  Ro > (T - 1) / (T + 1)  <=>  rev * (T + 1) > fwd * (T - 1)
+
+ With the SWR scaled by 100, as in SWR_Trip, this becomes: rev * (SWR_Trip + 100) > fwd * (SWR_Trip - 100)
+ Since the sums are compared, the division by the number of samples is not required. The maximum product is
+ 16 * 4095 * 1000, which fits easily in an unsigned long.
+*/
+static void tx_guard(void)
+	{
+	unsigned int trip = SWR_Trip;
+	int samples = (int)cal.calval.samples;
+
+	if(samples < SAMPLE_MIN) samples = SAMPLE_MIN;	// Protect against a corrupted setting.
+
+// SWR
+	fwd_sum += (unsigned long)(adc_raw[FWD_PWR - ID_CUR] + cal.calval.lo_pwr_offset);
+	rev_sum += (unsigned long)adc_raw[REV_PWR - ID_CUR];
+
+	if(++swr_count >= samples)
+		{
+		if(pa_state
+			&& (fwd_sum >= (unsigned long)PWR_MTR_DEAD_BAND * (unsigned long)swr_count)	// Only if there is some power,
+			&& (rev_sum * (unsigned long)(trip + 100) > fwd_sum * (unsigned long)(trip - 100)))
+			isr_swr_trip = TRUE;
+
+		fwd_sum = rev_sum = 0UL;
+		swr_count = 0;
+		}
+// KEY
+	if(KEY) key_off_count = 0;
+	else if(key_off_count < KEY_OFF_TICKS) key_off_count++;
+// Main loop watchdog
+	if(main_heartbeat < MAIN_TIMEOUT) main_heartbeat++;
+// Force RF off if required
+	if((key_off_count >= KEY_OFF_TICKS) || isr_swr_trip || (alarms & ALARM_MASK) || (main_heartbeat >= MAIN_TIMEOUT))
+		TX_ON = OFF;
+	}
+
 // Simulate encoder with UP / DOWN buttons
 // Read encoder
 int encoder_get(void)
@@ -405,6 +478,9 @@ void __attribute__((interrupt)) _T3Interrupt(void)
 				}
 			}
 		}
+// A-D conversions and TX protection. These are last, so that they do not disturb the frequency counter gate time.
+	adc_tick();
+	tx_guard();
 //	IRQ_TEST = 0;						// Timing test
 	}
 

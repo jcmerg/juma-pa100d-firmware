@@ -580,6 +580,25 @@
  displayed the automatic band select mode is changed to something other than F-Sense, when this new configuration is saved the additional frequency
  display screen is still displayed. It vanishes once the display page is changed. This update fixes this anomaly and now if the configuration is
  changed and saved the starting page is shown. A.Ryan - 5B4AIY - 26/AUG/2023
+ ---------------------------------- DL4JC Modifications ----------------------------------
+ Build 4-DL4JC	NOT AN OFFICIAL RELEASE. The EEPROM layout is unchanged, there is no checksum error on loading.
+ TX protection:
+ - TX_ON is forced off in the User Configuration mode. Previously it stayed in the state it was in when the mode was entered.
+ - The trap handlers now force TX_ON off and run the fan at high speed before anything else. (See safe_state() in traps.c)
+ - New function tx_guard() in the 1mS interrupt (timers_pwm.c). It forces TX_ON off if KEY is inactive for 2mS, if there is an
+   active alarm, if the SWR exceeds the trip limit, or if the main loop has not run for 2 seconds. Previously all protection was
+   in the main loop, and was suspended whenever the main loop was blocked, e.g. waiting for a button release or a save prompt.
+ - All A-D conversions are now made in the 1mS interrupt (adc12.c), which allows the SWR test to run there. convert_adc12() now
+   returns the latest value. The tone generator (TMR2) interrupt priority has been raised above that of TMR3.
+ Band select:
+ - KX2/KX3 (ASCII) mode: frequencies above 30MHz are limited before the conversion to unsigned int. Previously e.g. 144MHz
+   wrapped to 12.9MHz and selected the 20m filter with TX enabled.
+ - Juma TRX-2 mode: an invalid band now sets NOT_KNOWN (TX inhibited) instead of 10m.
+ - New band select mode 6, Xiegu, using the Xiegu ACC port band voltages (230mV steps). (See get_xiegu_band())
+ Other:
+ - Service mode: an alarm now really exits the service mode. Previously the service loop continued without handling any buttons.
+ - Remote mode: the known limitation that the command time-out never expires when polling is enabled is now documented in remote().
+ - Additional start-up screen showing the modified build.  DL4JC - 04/OCT/2026
 */
 
 #include <stdio.h>
@@ -657,6 +676,9 @@ extern int blink;							// Alarm blink flag
 extern int decay_counter;					// Power meter slow decay
 extern int poll_resp_rec;					// Poll response (freq set) received from TRX-2/KX3, 1 = received
 extern int enc;
+extern volatile unsigned int adc_raw[];		// Latest A-D values, updated every 1mS in adc12.c
+extern volatile unsigned int main_heartbeat;	// Main loop watchdog, see tx_guard() in timers_pwm.c
+extern volatile int isr_swr_trip;			// SWR trip detected in the 1mS interrupt, see tx_guard() in timers_pwm.c
 
 // Local Data
 void (*rs232_mode)(void);					// Pointer to function taking void and returning void
@@ -705,7 +727,8 @@ const char *f_sense[] = {				// Frequency Sense Mode Indexed by: Band_Select_Mod
 							"Juma-TRX2",// 2 - Juma TRX-2 special command set
 							"F-Sense",	// 3 - Automatic frequency measurement
 							"FT817/818",// 4 - Yaesu 5-Byte Binary
-							"Manual"	// 5 - Manual band selection - NO PROTECTION!
+							"Manual",	// 5 - Manual band selection - NO PROTECTION!
+							"Xiegu"		// 6 - Xiegu ACC port band voltage
 							};
 
 const char *auto_man[] = {				// Indexed by: Auto_Manual
@@ -848,6 +871,7 @@ const char Yes_No[] = {"PWR:No BAND+:Yes"};
 const char firmware[] = {"\n\r%sD Firmware: %s Build: %s Date: %s\n\r"};
 const char copyright[] = {"Copyright: Juha Niinikoski - OH2NLT & Matti Hohtola - OH7SV\n\r"};
 const char additional_features[] = {"(Additional features and modifications - Adrian Ryan - 5B4AIY)\n\r"};
+const char dl4jc_features[] = {"(Modified build - DL4JC, not an official release)\n\r"};
 const char Rmt_Pwr_Off[] = {"Remote Power Off"};
 const char Data_Saved[] = {"   Data Saved"};
 
@@ -884,6 +908,8 @@ const char Chksum_Err_Msg[] = {" Checksum Error "};
 const char Loading_Defaults[] = {"Loading Defaults"};
 const char Juma_PA100[] = {"JUMA PA100"};
 const char OH2NLT_OH7SV[] = {"  OH2NLT OH7SV  "};
+const char Modified_Msg[] = {" Modified Build "};
+const char DL4JC_Msg[] = {"     DL4JC      "};
 const char Calibration_msg[] = {"  Calibration"};
 const char Mode_msg[] = {"  Mode%7s"};
 const char Display_Next[] = {" DISPLAY = Page "};
@@ -1369,6 +1395,7 @@ int get_band(unsigned frequency)
 void serial_kx3(void)				// Serial Data Handler
 	{
 	char c;
+	long freq;
 /*
  First check to see if the polling timer has timed out, or if the not_used flag is set. The not_used
  flag is set if this is the first time we have checked, or if the manual band switch has been pressed,
@@ -1453,7 +1480,12 @@ void serial_kx3(void)				// Serial Data Handler
 				if(Poll_Time)
 					poll_resp_rec = TRUE;			// If polling is enabled, set the poll response received flag.
 
-				Current_Band = get_band((unsigned int)((atol(cmd_buf + 2) + 500L) / 1000L));	// Convert to nearest kHz
+				freq = (atol(cmd_buf + 2) + 500L) / 1000L;	// Convert to nearest kHz
+
+				if(freq > 30000L)					// Check limit before the cast to unsigned int, otherwise e.g. 144MHz
+					freq = 30002L;					// would wrap to 12.9MHz and select the 20m filter.
+
+				Current_Band = get_band((unsigned int)freq);
 				cmd_timeout = 0;					// Reset the message timer,
 				clear_buffer();						// reset the buffer and index, and restart.
 				}	// End IF
@@ -1770,6 +1802,12 @@ void remote(void)
 		send_status();						// send the current status, and reset the polling timer,
 		polling_timer = Poll_Time * 1000;
 		rmt_timeout = polling_timer + 100;	// and reset the command time-out.
+/*
+ KNOWN LIMITATION: Resetting the command time-out here means that with polling enabled the time-out never expires,
+ so the loss of the remote host is not detected and the amplifier does not fall back to STANDBY. This is kept
+ deliberately for compatibility with existing remote hosts that rely on the automatic status messages and only send
+ occasional commands. Without polling, the 5 second time-out after the last received command still applies.
+*/
 		}
 
 	if(!kbhit()) return;					// No characters pending, so exit.
@@ -2046,6 +2084,12 @@ void check_alarms(void)
 // Check SWR, SWR Alarm only active in the OPERATE state.
 	if((swr > SWR_Trip) & pa_state) alarms |= SWR_AL;	// Set alarm bit
 
+	if(isr_swr_trip)									// SWR trip detected in the 1mS interrupt. The alarm bit is set
+		{												// before the flag is cleared, so RF stays off in between.
+		alarms |= SWR_AL;
+		isr_swr_trip = FALSE;
+		}
+
 	alarms &= Enabled_Alarms;							// Select only the enabled alarms
 
 	if(alarms & ALARM_MASK)								// If SWR, O/C, High-Temp, or, if enabled, High-Voltage, or Low Voltage
@@ -2236,6 +2280,57 @@ void eval_y817_band(void)
 	{
 	Current_Band = get_817_band(YAESU_FT_817);
 	}
+/*
+ Xiegu ACC port band voltages. These use 230mV steps, and unlike Yaesu there is a separate level for 60m:
+
+	160m 230mV, 80m 460mV, 60m 690mV, 40m 920mV, 30m 1150mV, 20m 1380mV, 17m 1610mV, 15m 1840mV, 12m 2070mV, 10m 2300mV
+
+ Each threshold is midway between two adjacent levels, giving a tolerance of +/-115mV. The A-D count is mV * 4096 / 5000.
+ The 60m band (5MHz) uses the 40m low-pass filter, as it does in the other band select modes. (See band_limits[], LM7)
+ Below the 160m threshold the band is OUT_OF_BAND, above the 10m threshold it is NOT_KNOWN, both inhibit TX.
+*/
+const unsigned int xiegu_band_limits[] = {		// Thresholds, A-D counts for a 5.000V reference.
+										94,		// 115mV	Below this: Out-Of-Range
+										283,	// 345mV	160m / 80m
+										471,	// 575mV	80m / 60m
+										659,	// 805mV	60m / 40m
+										848,	// 1035mV	40m / 30m
+										1036,	// 1265mV	30m / 20m
+										1225,	// 1495mV	20m / 17m
+										1413,	// 1725mV	17m / 15m
+										1602,	// 1955mV	15m / 12m
+										1790,	// 2185mV	12m / 10m
+										1978	// 2415mV	Above this: Unknown Band
+										};
+
+const int xiegu_bands[] = {						// Indexed by: number of thresholds exceeded
+										OUT_OF_BAND,
+										1,		// 160m
+										2,		// 80m
+										3,		// 60m, uses the 40m filter
+										3,		// 40m
+										4,		// 30m
+										5,		// 20m
+										6,		// 17m
+										7,		// 15m
+										8,		// 12m
+										9,		// 10m
+										NOT_KNOWN
+										};
+
+int get_xiegu_band(int v)
+	{
+	int i = 0;
+
+	while((i < 11) && (v > (int)xiegu_band_limits[i])) i++;
+
+	return xiegu_bands[i];
+	}
+// Check Xiegu band data (voltage), same input as the Yaesu FT-817 band data.
+void eval_xiegu_band(void)
+	{
+	Current_Band = get_xiegu_band(YAESU_FT_817);
+	}
 
 // Set Gain & Filter Relays
 void set_relays(void)
@@ -2308,7 +2403,8 @@ void (*select_auto_band[])(void) = {					// Indexed by: Band_Select_Mode
 									check_polling,		// 2 TRX-2
 									eval_band,			// 3 Frequency Sense Mode
 									eval_y817_band,		// 4 FT-817 Mode
-									manual_band			// 5 Manual Band Selection
+									manual_band,		// 5 Manual Band Selection
+									eval_xiegu_band		// 6 Xiegu Mode
 									};
 
 int scaled_temperature(double t)
@@ -2323,12 +2419,16 @@ int scaled_temperature(double t)
 // Measure RF Power and PA Temperature
 void analog_measurements(void)
 	{
-	int i = 9;
+	int i = 0;
 	static long fwd_avg, rev_avg;
 
-	do	{													// Sample all channels, and save the samples.
-		AD_Values[i - 9] = convert_adc12(i);
-		} while (++i < 15);
+	_T3IE = 0;												// Take a consistent snapshot of all channels, the
+															// conversions are made in the 1mS interrupt. (See adc12.c)
+	do	{
+		AD_Values[i] = adc_raw[i];
+		} while (++i < 6);
+
+	_T3IE = 1;
 
 // Measure temperature
 	pa_temp = (pa_temp * 0.99) + ((double)hs_temp * 0.01);	// 100-sample running average
@@ -2418,6 +2518,7 @@ void display_hdr(void)
 	printf(firmware, Juma_PA100, VERSION, BUILD_NUMBER, BUILD_DATE);
 	printf(copyright);
 	printf(additional_features);
+	printf(dl4jc_features);
 	printf(System_Clk_Msg, CLK_FRQ);
 	}
 
@@ -2441,12 +2542,12 @@ void get_one_zero(int *value)
  code into a small function, and then collecting these functions into an array, and finally executing the appropriate
  function using the page as an index into the array. Adrian Ryan - 5B4AIY May 2012.
 */
-void cfg_0(void)	// Auto band select mode (0 = Yaesu CAT, 1 = Elecraft KX-3, 2 = Juma TRX-2, 3 = F-Sense, 4 = FT-817, 5 = Manual)
+void cfg_0(void)	// Auto band select mode (0 = Yaesu CAT, 1 = Elecraft KX-3, 2 = Juma TRX-2, 3 = F-Sense, 4 = FT-817, 5 = Manual, 6 = Xiegu)
 	{
 	static int current_mode;
 
 	current_mode = Band_Select_Mode;
-	set_value(1, &Band_Select_Mode, MANUAL, YAESU);
+	set_value(1, &Band_Select_Mode, MAX_BSEL_MODE, YAESU);
 
 	if(current_mode != Band_Select_Mode)		// The mode has changed,
 		{
@@ -2685,6 +2786,8 @@ int main(void)
 	FAN2 = ON;						// Test FAN2, low speed on
 // Start PWM system
 	IPC0 = 0x5444;					// Set tone generator (TMR1) priority higher than others
+	IPC1bits.T2IP = 5;				// The tone generator is TMR2. Its priority must be above the 1mS TMR3 interrupt (4),
+									// which now includes the A-D conversions, otherwise the tones would be distorted.
 	init_timers_pwm();				// Setup PWM & tone generators
 
 // Init Main Board SPI traffic
@@ -2734,6 +2837,8 @@ int main(void)
 		{
 		sprintf(lcdpbuff, Hello, Juma_PA100, VERSION);
 		display_screen(lcdpbuff, OH2NLT_OH7SV);
+		ms_delay(1000);
+		display_screen(Modified_Msg, DL4JC_Msg);	// Second screen, shown for the sign-on prompt delay below
 		y = 2000;					// and set sign-on prompt delay time
 		}
 // Check if service mode start
@@ -2836,6 +2941,7 @@ int main(void)
  Temp		5.8
 */ 
 		MAIN_TEST = !MAIN_TEST;			// Timing test J19-5 Check with oscilloscope for reversals
+		main_heartbeat = 0;				// Main loop is running, see tx_guard() in timers_pwm.c
 		key = KEY;						// Copy I/O bit to status flag, this uses less code than using the I/O bit directly.
 // Auto band select
 		select_auto_band[Band_Select_Mode]();				// Get the current auto band selection,
@@ -2893,7 +2999,7 @@ int main(void)
 					}
 // AUTO
 // 11.11.2008 toggle logic
-				if(!AUTO && (Band_Select_Mode < MANUAL))	// SW2 - AUTO mode cannot be selected if Manual Band selection is in effect.
+				if(!AUTO && (Band_Select_Mode != MANUAL))	// SW2 - AUTO mode cannot be selected if Manual Band selection is in effect.
 					{
 					Auto_Manual ^= 1;						// Toggle AUTO/MANUAL Band select. (Manual = 0, Auto = 1)
 					not_used = TRUE;						// There has been a change of state, so force a frequency query
@@ -2997,6 +3103,8 @@ int main(void)
 		else										// User Configuration Mode
 			{
 			pa_state = STANDBY;						// Force state to Standby in User Configuration mode
+			TX_ON = OFF;							// and ensure RF is off, TX_ON is not otherwise updated in this mode.
+			tx = 'R';
 			display_cfg_page();
 
 			if(!OPER)								// In User Configuration Mode, OPER is the Save & Exit button

@@ -7,8 +7,8 @@
 
 // Version Data
 #define VERSION				"v4.01a"
-#define BUILD_NUMBER		"3"
-#define BUILD_DATE			"26/AUG/2023"
+#define BUILD_NUMBER		"4-DL4JC"
+#define BUILD_DATE			"04/OCT/2026"
 
 // Macro Definitions
 #define lcd_spc(count)		set_ch_bits(' ', count)		// Print spaces
@@ -135,6 +135,8 @@
 #define FREQ_SENSE			3
 #define FT_817				4
 #define MANUAL				5
+#define XIEGU				6			// Xiegu ACC port band voltage. Added after MANUAL so that saved settings remain valid.
+#define MAX_BSEL_MODE		XIEGU		// Last band select mode
 #define REMOTE				1			// Remote control operation
 #define SERIAL_TEST			2			// Serial Test mode
 #define MANUAL_BAND			0
