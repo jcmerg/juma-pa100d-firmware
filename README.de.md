@@ -8,14 +8,16 @@ Deutsch | [English](README.md)
 OH2NLT, und Matti Hohtola, OH7SV.
 
 Schwerpunkt dieser Version ist der **Schutz beim Senden** (Endstufe und Tiefpassfilter). Dazu kommen
-mehrere Fehlerbehebungen, die auch v4.01a betreffen, ein **Xiegu**-Bandspannungsmodus, ein
-**Hardrock-50**-kompatibler serieller Modus und die Möglichkeit, mit dem aktuellen Microchip-Compiler
-**XC16** zu bauen.
+mehrere Fehlerbehebungen, die auch v4.01a betreffen, ein zuverlässiges **F-Sense** bei Zweiton,
+Rauschen und SSB, ein **Xiegu**-Bandspannungsmodus, ein **Hardrock-50**-kompatibler serieller Modus,
+die Einstellung **Beep Tone** für den RS-928 und die Möglichkeit, mit dem aktuellen Microchip-Compiler
+**XC16** zu bauen. Firmware-Updates gehen auch ohne den Windows-Loader von Ingenia, mit
+[`juma-flash.py`](#alternative-juma-flashpy-windows-macos-linux).
 
 > **Keine offizielle JUMA-Version.** Die Nutzung erfolgt auf eigene Verantwortung. Das Aufspielen
 > einer Firmware, die nicht von JUMA stammt, kann Garantie und Support des Herstellers erlöschen
-> lassen. Teste jeden neuen Build zuerst mit Dummy-Load und kleiner Leistung. Du kannst jederzeit zur originalen v4.01a
-> zurückkehren, siehe [Zurück zur Original-Firmware](#zurück-zur-original-firmware).
+> lassen. Teste jeden neuen Build zuerst mit Dummy-Load und kleiner Leistung. Du kannst jederzeit
+> zur originalen v4.01a zurückkehren, siehe [Zurück zur Original-Firmware](#zurück-zur-original-firmware).
 
 ---
 
@@ -46,12 +48,13 @@ mehrere Fehlerbehebungen, die auch v4.01a betreffen, ein **Xiegu**-Bandspannungs
 | **User-Config-Menü** | TX_ON wird zwangsweise abgeschaltet. In v4.01a blieb es in dem Zustand, den es beim Betreten des Menüs hatte. |
 | **Trap-Handler** | Bei einem Prozessorfehler (Address-, Stack- oder Math-Trap) wird zuerst die HF abgeschaltet und der Lüfter eingeschaltet. |
 | **Service-Mode** | Ein Alarm beendet den Service-Mode jetzt wirklich. In v4.01a hing das Gerät in der Schleife. |
+| **Port-Register** | Der Test-Pin wird mit einem einzelnen Bit-Befehl umgeschaltet. Vorher schrieb die Hauptschleife das ganze Port-Register neu und konnte die HF direkt nach dem Abschalten durch die Schutzfunktion für bis zu 1 ms wieder einschalten. |
 
 ### Schutz der Tiefpassfilter beim Bandwechsel
 
 | Änderung | Wirkung |
 |---|---|
-| **Kein Relais-Umschalten unter Last** | Bei einem Bandwechsel wird zuerst die HF abgeschaltet. Die Filterrelais schalten, wenn die PA-Relais abgefallen sind, und TX bleibt 20 ms gesperrt, bis die Relais eingeschwungen sind. |
+| **Kein Relais-Umschalten unter Last** | Bei einem Bandwechsel wird zuerst die HF abgeschaltet. Die Filterrelais schalten frühestens 20 ms nach „HF aus“, wenn die PA-Relais abgefallen sind (auch wenn die Schutzfunktion abgeschaltet hat), und TX bleibt 20 ms gesperrt, bis die Relais eingeschwungen sind. |
 | **Frequenz oberhalb des Filters** | Liegt die mit F-Sense gemessene Eingangsfrequenz 2 ms lang über dem gewählten Filter, geht die HF aus, bis das Band korrigiert ist. Das behebt den **O/C-Alarm** aus v4.01a beim ersten Senden nach einem Bandwechsel im F-Sense-Modus, z. B. 40 m → 20 m. Er entstand, weil 20 m durch das 40-m-Filter verstärkt wurde. Wirkt in allen Bandwahl-Modi. |
 | **Frequenz unterhalb des Filters** (F-Sense) | In den ersten 200 ms einer Aussendung: 3 ms unter dem gewählten Filter bedeutet HF aus, bis das Band gemessen ist (z. B. 80 m durch das 20-m-Filter, schlechte Oberwellenunterdrückung). Die Prüfung endet mit der ersten Messung, damit modulierte Signale die Relais nicht rattern lassen. |
 | **Tieferes Band nur bei sauberem Träger** (F-Sense) | F-Sense misst modulierte Signale (Zweiton, Rauschen, SSB) zu tief, z. B. 14 MHz Zweiton als ca. 11 MHz. v4.01a wählte dann zu Beginn der Aussendung das 30-m-Filter. Ein tieferes Band wird jetzt nur gewählt, wenn alle Messwerte innerhalb von ca. 3 % liegen (Tune, CW) oder selbst der höchste Messwert weit unter dem aktuellen Filter liegt (z. B. 20 m → 40 m mit SSB); ein höheres Band weiterhin bei jedem Signal. |
@@ -73,6 +76,7 @@ mehrere Fehlerbehebungen, die auch v4.01a betreffen, ein **Xiegu**-Bandspannungs
 |---|---|
 | **Empfangs-Überlauf** | Die Empfangsroutine liest jetzt den ganzen UART-Puffer aus, und ein Überlauf wird automatisch zurückgesetzt. In v4.01a konnte der Empfang bei hoher Baudrate (z. B. 115200) nach einem kurzen Stoß dauerhaft ausfallen, während das Senden weiterlief. |
 | **Statuszeile am Stück** | Die Statusantwort (`=R` und Polling) wird komplett formatiert und dann in einem Zug gesendet. Vorher konnten Lücken zwischen den Feldern die Zeile zerteilen, und JUMA_CTRL zeigte dann `???`. Das Format ist unverändert. |
+| **KX2/KX3-Zeitüberschreitung** | Eine unvollständige `FA`-Meldung wird nach der Zeitüberschreitung verworfen. In v4.01a griff die Zeitüberschreitung nie, und ein Meldungsrest konnte sich mit der nächsten Meldung vermischen. |
 
 ### Sonstiges
 
@@ -100,10 +104,14 @@ Vergleich mit dem F-Sense-Modus der originalen v4.01a:
 |---|---|---|---|
 | **TX-Freigabe** | sofort, mit dem zuletzt gemessenen Band | erst wenn F-Sense die Frequenz **in dieser Aussendung** gemessen hat; bis dahin läuft das Signal mit der Leistung des Transceivers über den Bypass | sofort, mit dem zuletzt gemessenen Band |
 | **Erstes Senden nach Wechsel auf höheres Band** (z. B. 40 → 20 m) | PA verstärkt durch das 40-m-Filter, bis gemessen ist → **O/C-Alarm** | PA verstärkt nie durch ein falsches Filter | nach 2 ms HF aus, bis das Band gemessen ist |
-| **Erstes Senden nach Wechsel auf tieferes Band** (z. B. 20 → 80 m) | PA verstärkt durch das 20-m-Filter, bis gemessen ist → schlecht unterdrückte Oberwellen | PA verstärkt nie durch ein falsches Filter | nach 3 ms HF aus, bis das Band gemessen ist; **wenige ms** mit schlecht unterdrückten Oberwellen |
+| **Erstes Senden nach Wechsel auf tieferes Band** (z. B. 20 → 80 m) | PA verstärkt durch das 20-m-Filter, bis gemessen ist → schlecht unterdrückte Oberwellen | PA verstärkt nie durch ein falsches Filter* | nach 3 ms HF aus, bis das Band gemessen ist; **wenige ms** mit schlecht unterdrückten Oberwellen* |
 | **Filterrelais beim Bandwechsel** | schalten unter voller Leistung | schalten ohne HF, danach 20 ms TX-Sperre | schalten ohne HF, danach 20 ms TX-Sperre |
 | **Verzögerung am Anfang jeder Aussendung** | keine | ca. 20–40 ms ohne PA (bei SSB mit leisem Sprechbeginn auch länger) | keine |
 | **Geeignet für** | – | SSB, Digimodes, CW ohne Voll-QSK | CW mit Voll-QSK |
+
+\* Mit Tune/CW oder bei einem großen Schritt nach unten. Nach einem kleinen Schritt nach unten
+(z. B. 20 m → 30 m) mit nur modulierten Signalen bleibt die PA auf dem höheren Filter, siehe
+[Bekannte Einschränkungen](#bekannte-einschränkungen).
 
 Faustregel: **Off** lassen, außer bei CW mit Voll-Break-in. Mit **On** nach einem Wechsel auf ein tieferes Band zuerst kurz mit kleiner Leistung tasten.
 
@@ -176,6 +184,9 @@ Zur bekannten Einschränkung mit Polling siehe [Bekannte Einschränkungen](#beka
 - Der **Xiegu-Modus** steht im Original-Block als *F-Sense* und nur im Erweiterungsblock als *Xiegu*.
   Der **HR50-Modus** steht im Original-Block als *KX2/KX3*.
 - **Beep Tone** steht nur im Erweiterungsblock. Er wird auch mit den Service-Einstellungen gespeichert.
+- Der Erweiterungsblock speichert außerdem die Prüfsumme des Konfigurationsblocks. Hat die
+  Original-Firmware die Konfiguration inzwischen gespeichert, z. B. mit bewusst gewähltem F-Sense,
+  wird Xiegu/HR50 nicht zurückgeholt.
 
 ### Zurück zur Original-Firmware
 
@@ -196,8 +207,10 @@ Hinweis: Der originale F-Sense-Modus hat weiterhin das oben beschriebene O/C-Pro
 ## Flashen mit dem Ingenia-Bootloader
 
 Die PA-100D hat den **Ingenia-dsPIC-Bootloader** im oberen Flash (0x17D00–0x17FFE). Die Firmware
-wird über die serielle Schnittstelle von einem Windows-PC geladen. Grundlage ist das JUMA-Dokument
-*„Firmware Updating for the JUMA TRX2 & PA100D“* (5B4AIY).
+wird über die serielle Schnittstelle geladen, mit dem Ingenia-Loader auf einem Windows-PC wie hier
+beschrieben oder mit [`juma-flash.py`](#alternative-juma-flashpy-windows-macos-linux) unter Windows,
+macOS oder Linux. Grundlage ist das JUMA-Dokument *„Firmware Updating for the JUMA TRX2 & PA100D“*
+(5B4AIY).
 
 ### 1. Serielles Kabel
 
@@ -285,7 +298,8 @@ zur Prüfung zurück. Danach die Stromversorgung trennen und normal einschalten.
   Die Kalibrierung bleibt also erhalten. HEX-Dateien mit Daten im Bootloader-Bereich werden abgelehnt.
 - Die Bootloader-Adresse wird aus dem Reset-Vektor des Geräts gelesen (PA-100D: 0x17D00), dieser Bereich
   wird nie beschrieben. Der Reset-Vektor zeigt immer weiter auf den Bootloader. Er bleibt also auch
-  nach einem abgebrochenen Flashvorgang erreichbar; dann einfach erneut flashen.
+  nach einem abgebrochenen Flashvorgang erreichbar; dann die Stromversorgung trennen, den Bootloader
+  neu starten (OPER + PWR) und erneut flashen.
 - `--dry-run` prüft nur die HEX-Datei, `--verify-only` vergleicht den Flash mit der HEX-Datei,
   `--baud` stellt eine niedrigere Geschwindigkeit ein (Standard 115200).
 
@@ -326,7 +340,7 @@ Programmierschritt:
      Prozessor im Reset, deshalb kann nichts die Selbsthaltung einschalten; Loslassen schaltet die PA
      aus und bricht das Programmieren ab. (Anders als später beim Update mit Ingenia, siehe unten.)
 2. Prüfen, ob die PA mit der JUMA-Firmware startet.
-3. Danach diese Firmware über die serielle Schnittstelle mit Ingenia laden, genau wie unter
+3. Danach diese Firmware über die serielle Schnittstelle mit Ingenia oder `juma-flash.py` laden, genau wie unter
    [Flashen mit dem Ingenia-Bootloader](#flashen-mit-dem-ingenia-bootloader) beschrieben (OPER + PWR).
 
 Die Original-Firmware des Clones wird in Schritt 1 überschrieben. Wer sie eventuell zurückhaben
@@ -378,7 +392,7 @@ Variablen sind `volatile`, `-O1` wäre also möglich, aber nur nach einem vollst
 Ergebnis: `firmware/Juma PA-100D <VERSION>.hex`. Die Version kommt aus `juma-pa100.h`
 (`VERSION`). Das Skript
 
-- kompiliert alle Module mit `-mcpu=30F6014A -Wall`,
+- kompiliert alle Module mit `-mcpu=30F6014A -O0 -Wall`,
 - linkt mit `juma-trx2.gld` (bootloader-spezifisch: Code ab 0x100, Programmspeicher unterhalb 0x17D00),
 - erzeugt das HEX und **bricht ab, wenn etwas im Bootloader-Bereich landet**.
 
@@ -410,7 +424,8 @@ nicht getestet.
 | `adc12.c` | ADC-Messungen im Interrupt |
 | `uart.c`, `serial_pa100.c`, `serial_test.c` | Serielle Schnittstelle, TRX-2-Protokoll, Testsuite |
 | `service.c` | Kalibrier- und Service-Mode |
-| `lcd-trx2.c`, `traps.c`, `tmr5delay.c`, `spi1.c`, `DataEEPROM.s` | LCD, Trap-Handler, Wartezeiten, SPI, EEPROM-Zugriff |
+| `lcd-trx2.c`, `traps.c`, `tmr5delay.c`, `DataEEPROM.s` | LCD, Trap-Handler, Wartezeiten, EEPROM-Zugriff |
+| `spi1.c` | SPI-Treiber, seit 2014 nicht mehr verwendet und nicht mitgebaut (aus dem Original übernommen) |
 | `juma-pa100.h`, `pa100_eeprom.h` | Hardware-Definitionen, EEPROM-Strukturen |
 | `juma-trx2.gld` | Linker-Skript für den Ingenia-Bootloader |
 | `build-xc16.sh` | Build-Skript für XC16 |
@@ -447,7 +462,7 @@ nicht getestet.
 
 - Ursprüngliche Firmware: **Juha Niinikoski, OH2NLT**, und **Matti Hohtola, OH7SV** (JUMA)
 - Erweiterungen und Pflege bis v4.01a: **Adrian Ryan, 5B4AIY**
-- Änderungen ab v4.03: **DL4JC**
+- Änderungen nach v4.01a (ab v4.03 mit eigenen Versionsnummern): **DL4JC**
 - `DataEEPROM.s`, `DataEEPROM.h`: Microchip Technology Inc. (Microchip-Lizenz, siehe Dateikopf)
 - Ingenia-dsPIC-Bootloader: Ingenia-CAT S.L., angepasst von OH2NLT
 

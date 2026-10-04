@@ -8,8 +8,10 @@ Modified firmware for the **JUMA PA-100D** HF linear amplifier (dsPIC30F6014A, a
 OH2NLT, and Matti Hohtola, OH7SV.
 
 This version focuses on **TX protection** (amplifier and low-pass filters), fixes several bugs that
-were also present in v4.01a, adds a **Xiegu** band voltage mode and a **Hardrock-50** compatible
-serial mode, and can be built with the current Microchip **XC16** compiler.
+were also present in v4.01a, makes **F-Sense** reliable with two-tone, noise and SSB, adds a
+**Xiegu** band voltage mode, a **Hardrock-50** compatible serial mode and a **Beep Tone** setting for
+the RS-928, and can be built with the current Microchip **XC16** compiler. Firmware updates also
+work without the Windows Ingenia loader, with [`juma-flash.py`](#alternative-juma-flashpy-windows-macos-linux).
 
 > **Not an official JUMA release.** You use this firmware at your own risk. Loading firmware that
 > is not from JUMA may void the manufacturer's warranty and support. Test every new build with a
@@ -45,12 +47,13 @@ serial mode, and can be built with the current Microchip **XC16** compiler.
 | **User configuration mode** | TX_ON is forced off. In v4.01a it stayed in the state it had when the menu was entered. |
 | **Trap handlers** | On a processor fault (address, stack or math trap) the RF is turned off and the fan is switched on before anything else. |
 | **Service mode** | An alarm now really exits the service mode. In v4.01a the device hung in the loop. |
+| **Port register** | The timing test pin is toggled with a single bit instruction. Previously the main loop rewrote the whole port register, which could switch RF on again for up to 1 ms just after the protection had switched it off. |
 
 ### Low-pass filter protection (band change)
 
 | Change | Effect |
 |---|---|
-| **No relay switching under power** | On a band change RF is turned off first. The filter relays switch once the PA relays have released, and TX is held off for 20 ms until the relays have settled. |
+| **No relay switching under power** | On a band change RF is turned off first. The filter relays switch no earlier than 20 ms after RF off, once the PA relays have released (also when the protection switched RF off), and TX is held off for 20 ms until the relays have settled. |
 | **Frequency above the filter** | If the input frequency measured by F-Sense is above the selected filter for 2 ms, RF goes off until the band has been corrected. This fixes the **O/C alarm** of v4.01a on the first transmission after a band change in F-Sense mode, e.g. 40 m → 20 m, which happened because 20 m was amplified through the 40 m filter. Works in every band select mode. |
 | **Frequency below the filter** (F-Sense) | In the first 200 ms of a transmission: 3 ms below the selected filter means RF off until the band has been measured (e.g. 80 m through the 20 m filter, poor harmonic suppression). The test ends with the first measurement, so that modulated signals do not make the relays chatter. |
 | **Lower band only from a clean carrier** (F-Sense) | F-Sense counts modulated signals (two-tone, noise, SSB) too low, e.g. 14 MHz two-tone as approx. 11 MHz. v4.01a then selected the 30 m filter at the start of the transmission. A lower band is now only selected when all samples lie within approx. 3 % (TUNE, CW), or when even the highest sample is far below the current filter (e.g. 20 m → 40 m with SSB); a higher band is still selected from any signal. |
@@ -72,6 +75,7 @@ serial mode, and can be built with the current Microchip **XC16** compiler.
 |---|---|
 | **Receive overrun** | The receive interrupt now reads the whole UART FIFO and an overrun is cleared automatically. In v4.01a reception could stop for good at higher baud rates (e.g. 115200) after a short burst, while transmission carried on. |
 | **Status line in one piece** | The status reply (`=R` / polling) is formatted completely and then sent in one go. Previously gaps between the fields could split the line, and JUMA_CTRL then showed `???`. The format is unchanged. |
+| **KX2/KX3 time-out** | An incomplete `FA` message is discarded after the time-out. In v4.01a the time-out never applied, and a partial message could be mixed with the next one. |
 
 ### Other
 
@@ -99,10 +103,13 @@ Compared with the F-Sense mode of the original v4.01a:
 |---|---|---|---|
 | **TX enable** | immediately, with the last measured band | only once F-Sense has measured the frequency **in this transmission**; until then the signal passes through the bypass at the transceiver's power | immediately, with the last measured band |
 | **First transmission after a change to a higher band** (e.g. 40 → 20 m) | PA amplifies through the 40 m filter until measured → **O/C alarm** | PA never amplifies through the wrong filter | RF off after 2 ms until the band has been measured |
-| **First transmission after a change to a lower band** (e.g. 20 → 80 m) | PA amplifies through the 20 m filter until measured → poorly suppressed harmonics | PA never amplifies through the wrong filter | RF off after 3 ms until the band has been measured; **a few ms** of poorly suppressed harmonics |
+| **First transmission after a change to a lower band** (e.g. 20 → 80 m) | PA amplifies through the 20 m filter until measured → poorly suppressed harmonics | PA never amplifies through the wrong filter* | RF off after 3 ms until the band has been measured; **a few ms** of poorly suppressed harmonics* |
 | **Filter relays on a band change** | switched under full power | switched without RF, then TX held off for 20 ms | switched without RF, then TX held off for 20 ms |
 | **Delay at the start of each transmission** | none | approx. 20–40 ms without the PA (longer with SSB if the speech starts quietly) | none |
 | **Suitable for** | – | SSB, digital modes, CW without full QSK | CW with full QSK |
+
+\* With TUNE/CW, or a large step down. After a small step down (e.g. 20 m → 30 m) with only modulated
+signals the PA stays on the higher filter, see [Known limitations](#known-limitations).
 
 Rule of thumb: leave it **Off** unless you use CW with full break-in. With **On**, after a change to a lower band, key briefly at low power first.
 
@@ -173,6 +180,8 @@ For the known limitation with polling enabled see [Known limitations](#known-lim
 - **Xiegu mode** is stored in the original block as *F-Sense*, and only in the extension block as
   *Xiegu*. **HR50 mode** is stored in the original block as *KX2/KX3*.
 - **Beep Tone** is only stored in the extension block. It is also saved with the service settings.
+- The extension block also stores the checksum of the configuration block. If the original firmware
+  has saved the configuration since, e.g. with F-Sense chosen on purpose, Xiegu/HR50 is not restored.
 
 ### Going back to the original firmware
 
@@ -193,8 +202,9 @@ Note: the original F-Sense mode still has the O/C problem described above.
 ## Flashing with the Ingenia boot loader
 
 The PA-100D has the **Ingenia dsPIC boot loader** in the upper flash memory (0x17D00–0x17FFE).
-The firmware is loaded over the serial port from a Windows PC. Based on the JUMA document
-*"Firmware Updating for the JUMA TRX2 & PA100D"* (5B4AIY).
+The firmware is loaded over the serial port, with the Ingenia loader on a Windows PC as described
+here, or with [`juma-flash.py`](#alternative-juma-flashpy-windows-macos-linux) on Windows, macOS or Linux.
+Based on the JUMA document *"Firmware Updating for the JUMA TRX2 & PA100D"* (5B4AIY).
 
 ### 1. Serial cable
 
@@ -280,7 +290,8 @@ for verification. Then disconnect the power supply and switch on normally.
   calibration is kept. HEX files with data in the boot loader area are refused.
 - The boot loader address is read from the device's reset vector (PA-100D: 0x17D00) and this area is
   never written. The reset vector always keeps pointing to the boot loader, so it stays reachable even
-  if flashing is interrupted. In that case simply flash again.
+  if flashing is interrupted. In that case disconnect the power supply, start the boot loader again
+  (OPER + PWR) and flash again.
 - `--dry-run` only checks the HEX file, `--verify-only` compares the flash with the HEX file,
   `--baud` sets a lower speed (default 115200).
 
@@ -319,7 +330,7 @@ usable remote control. The serial update therefore only works after a one-off pr
      reset, so nothing can switch the power latch on; releasing PWR switches the PA off and aborts
      the programming. (This differs from the later Ingenia update, see below.)
 2. Check that the PA starts with the JUMA firmware.
-3. Then load this firmware over the serial port with Ingenia, exactly as described in
+3. Then load this firmware over the serial port with Ingenia or `juma-flash.py`, exactly as described in
    [Flashing with the Ingenia boot loader](#flashing-with-the-ingenia-boot-loader) (OPER + PWR).
 
 The clone's original firmware is overwritten in step 1. If you might want it back, read the chip
@@ -371,7 +382,7 @@ Memory (37 %) and speed are sufficient. The variables shared with the interrupts
 Output: `firmware/Juma PA-100D <VERSION>.hex`. The version comes from `juma-pa100.h`
 (`VERSION`). The script
 
-- compiles all modules with `-mcpu=30F6014A -Wall`,
+- compiles all modules with `-mcpu=30F6014A -O0 -Wall`,
 - links with `juma-trx2.gld` (boot-loader-specific: code from 0x100, program memory below 0x17D00),
 - generates the HEX file and **aborts if anything ends up in the boot loader area**.
 
@@ -403,7 +414,8 @@ this version.
 | `adc12.c` | A-D conversions in the interrupt |
 | `uart.c`, `serial_pa100.c`, `serial_test.c` | Serial port, TRX-2 protocol, test suite |
 | `service.c` | Calibration and service mode |
-| `lcd-trx2.c`, `traps.c`, `tmr5delay.c`, `spi1.c`, `DataEEPROM.s` | LCD, trap handlers, delays, SPI, EEPROM access |
+| `lcd-trx2.c`, `traps.c`, `tmr5delay.c`, `DataEEPROM.s` | LCD, trap handlers, delays, EEPROM access |
+| `spi1.c` | SPI driver, not used since 2014 and not built (kept from the original) |
 | `juma-pa100.h`, `pa100_eeprom.h` | Hardware definitions, EEPROM structures |
 | `juma-trx2.gld` | Linker script for the Ingenia boot loader |
 | `build-xc16.sh` | Build script for XC16 |
@@ -439,7 +451,7 @@ this version.
 
 - Original firmware: **Juha Niinikoski, OH2NLT**, and **Matti Hohtola, OH7SV** (JUMA)
 - Extensions and maintenance up to v4.01a: **Adrian Ryan, 5B4AIY**
-- Modifications from v4.03: **DL4JC**
+- Modifications after v4.01a (from v4.03 with their own version numbers): **DL4JC**
 - `DataEEPROM.s`, `DataEEPROM.h`: Microchip Technology Inc. (Microchip licence, see file header)
 - Ingenia dsPIC boot loader: Ingenia-CAT S.L., adapted by OH2NLT
 
