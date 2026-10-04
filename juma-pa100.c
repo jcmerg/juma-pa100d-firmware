@@ -720,23 +720,23 @@ extern void clear_buffer(void);				// Clear Juma PA-100D receive buffer
 extern void get_yaesu(void);				// Get Yaesu 5-Byte binary frequency data
 
 // Frequency Counter Test
-extern int band_bins[];						// Found samples
-extern int freq_sample_ctr;					// Sample counter for F-SENSE mode
+extern volatile int band_bins[];						// Found samples
+extern volatile int freq_sample_ctr;					// Sample counter for F-SENSE mode
 extern volatile unsigned int fs_min, fs_max;	// Spread of the F-Sense sample set, see eval_band()
 extern volatile int fsense_evaluated;			// F-Sense sample set evaluated in this transmission, see tx_guard()
-extern int freq_ctr;						// Frequency counter averaging counter
+extern volatile int freq_ctr;						// Frequency counter averaging counter
 
 // External Data
-extern unsigned int rmt_timeout;			// Remote Mode command timer
-extern unsigned int button_timer;			// Long push timer, count from set value to zero, global visibility
-extern unsigned int polling_timer;			// Band query and remote control and monitoring polling timer
-extern unsigned int cmd_timeout;			// Elecraft KX-3 Time-out (Defined in timers_pwm.c)
+extern volatile unsigned int rmt_timeout;			// Remote Mode command timer
+extern volatile unsigned int button_timer;			// Long push timer, count from set value to zero, global visibility
+extern volatile unsigned int polling_timer;			// Band query and remote control and monitoring polling timer
+extern volatile unsigned int cmd_timeout;			// Elecraft KX-3 Time-out (Defined in timers_pwm.c)
 extern unsigned char cmd_buf[];				// Defined in serial_pa100.c
 extern int cmd_buf_idx;						// Defined in serial_pa100.c
 extern int blink;							// Alarm blink flag
-extern int decay_counter;					// Power meter slow decay
+extern volatile int decay_counter;					// Power meter slow decay
 extern int poll_resp_rec;					// Poll response (freq set) received from TRX-2/KX3, 1 = received
-extern int enc;
+extern volatile int enc;
 extern volatile unsigned int adc_raw[];		// Latest A-D values, updated every 1mS in adc12.c
 extern volatile unsigned int main_heartbeat;	// Main loop watchdog, see tx_guard() in timers_pwm.c
 extern volatile int isr_swr_trip;			// SWR trip detected in the 1mS interrupt, see tx_guard() in timers_pwm.c
@@ -994,11 +994,11 @@ const char ba[] = {'M', 'A'};		// Used in send_status(). Indexed by: Auto_Manual
 const char T_Char[] = {'F', 'C'};	// Used in send_status(). Indexed by: Temp_Scale
 
 // Timing
-int loop_ctr = 0;				// Alarm blink counter
+volatile int loop_ctr = 0;				// Alarm blink counter
 int display_message = 0;		// Alarm message display flag
 int beep_flag = FALSE;
 int msg_time = 200;				// ASCII message time-out value, mS.
-int rep_dly = _FAST;			// UP/DOWN button repeat delay time
+volatile int rep_dly = _FAST;			// UP/DOWN button repeat delay time
 
 // Display Control
 int	lcd_mode = NORMAL_DISPLAY_MODE;
@@ -1022,7 +1022,7 @@ int batt_pre_limit;				// Pre-limit warning threshold value
 
 unsigned long pwr_scale_factor;	// Used to calculate maximum power of graphic power meter display.
 
-long input_freq = 0L;			// Used to display the input frequency in the F-SENSE mode.
+volatile long input_freq = 0L;			// Used to display the input frequency in the F-SENSE mode.
 
 long fwd_pwr = 0L;				// Relative forward power
 long rev_pwr = 0L;				// Relative reverse power
@@ -1032,8 +1032,8 @@ int sample_counter = 1;			// Power measurement sample counter
 int swr = 100;					// Calculated SWR * 100
 
 // PA Status
-int pa_state = STANDBY;			// PA Standby/Operate Status, always start in the STANDBY state
-unsigned int alarms = 0;		// Alarm bits
+volatile int pa_state = STANDBY;			// PA Standby/Operate Status, always start in the STANDBY state
+volatile unsigned int alarms = 0;		// Alarm bits
 int not_used = TRUE;
 
 int key;						// TX request status - 1 = Tx, 0 = Rx

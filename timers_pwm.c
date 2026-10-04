@@ -25,33 +25,32 @@
 
 // External Data
 extern const unsigned int band_limits[];	// Band limits defined in the main
-extern unsigned int alarms;			// Alarm flag
-extern int loop_ctr;				// Alarm blink counter
+extern volatile unsigned int alarms;	// Alarm flag
+extern volatile int loop_ctr;		// Alarm blink counter
 extern int dsp_alarm;				// Alarm message display flag. Set in display_alarms()
-extern int pa_state;
+extern volatile int pa_state;
 extern int beep_flag;
-extern int rep_dly;					// UP/DOWN button auto-repeat timer
-extern int pa_state;
-extern long input_freq;
+extern volatile int rep_dly;			// UP/DOWN button auto-repeat timer
+extern volatile long input_freq;
 
 // Local Data
 unsigned int freq;					// Frequency counter
-unsigned int cmd_timeout;			// Serial message timer
-unsigned int polling_timer;			// Band data query, and remote status and monitoring polling timer
-unsigned int button_timer;			// Long push timer, count from set value to zero, global visibility
-unsigned int rmt_timeout;			// Remote mode command time-out
-int decay_counter;					// Power meter slow decay
+volatile unsigned int cmd_timeout;	// Serial message timer
+volatile unsigned int polling_timer;	// Band data query, and remote status and monitoring polling timer
+volatile unsigned int button_timer;	// Long push timer, count from set value to zero, global visibility
+volatile unsigned int rmt_timeout;	// Remote mode command time-out
+volatile int decay_counter;			// Power meter slow decay
 
 // Band selector
-int band_bins[10];					// Found samples
-int freq_sample_ctr;				// Sample counter
+volatile int band_bins[10];			// Found samples
+volatile int freq_sample_ctr;		// Sample counter
 volatile unsigned int fs_min = 0xFFFF;	// Lowest and highest valid frequency (kHz) in the current sample set, see eval_band(). DL4JC
 volatile unsigned int fs_max = 0;
-int freq_ctr;						// Input frequency sample averaging counter
+volatile int freq_ctr;				// Input frequency sample averaging counter
 
-static unsigned int tone_counter; 	// Beep tone length (ms)
-static unsigned int busy_counter;	// Tone generator busy(ms), busy if != 0
-static int last_cycle;				// For click-less end trick
+static volatile unsigned int tone_counter;	// Beep tone length (ms)
+static volatile unsigned int busy_counter;	// Tone generator busy(ms), busy if != 0
+static volatile int last_cycle;		// For click-less end trick
 
 // Encoder Simulator
 static unsigned int up;				// UP button shift register
@@ -62,7 +61,7 @@ static int rep_up;					// Repeat timers (ms)
 static int rep_dn;
 static int rep_up_dly;				// Repeat start delay (ms)
 static int rep_dn_dly;
-int enc = 0;						// Encoder accumulator
+volatile int enc = 0;				// Encoder accumulator
 
 // EEPROM structures
 extern struct

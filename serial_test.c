@@ -38,9 +38,9 @@ extern unsigned int crc_8(unsigned char, unsigned int);
 // External Data
 extern int fsense_tst;				// Flag for F-sense test printouts
 extern int br_txt[];
-extern int alarms;
+extern volatile unsigned int alarms;
 extern int last_man_band;
-extern int pa_state;
+extern volatile int pa_state;
 
 extern char lcdpbuff[];	// LCD print buffer
 

@@ -362,7 +362,7 @@ Hintergrund: [RS-928-Test im OARC-Wiki](https://wiki.oarc.uk/rs928ampreview).
 
 ## Firmware bauen
 
-### Mit MPLAB XC16 (macOS, Linux, Windows)
+### Mit MPLAB XC16 (macOS, Linux)
 
 Voraussetzung: [MPLAB XC16](https://www.microchip.com/xc16) v2.10 (die kostenlose Version reicht;
 das Projekt baut wie bisher ohne Optimierung, `-O0`).
@@ -378,7 +378,10 @@ Ergebnis: `firmware/Juma PA-100D <VERSION>.hex`. Die Version kommt aus `juma-pa1
 - linkt mit `juma-trx2.gld` (bootloader-spezifisch: Code ab 0x100, Programmspeicher unterhalb 0x17D00),
 - erzeugt das HEX und **bricht ab, wenn etwas im Bootloader-Bereich landet**.
 
-Anderer XC16-Pfad: `XC16=/pfad/zu/xc16/v2.10 ./build-xc16.sh`.
+Das Skript findet XC16 am Standardort (macOS: `/Applications/microchip/xc16`, Linux:
+`/opt/microchip/xc16`) und nimmt die neueste installierte Version. Anderer Pfad:
+`XC16=/pfad/zu/xc16/v2.10 ./build-xc16.sh`. Unter Windows läuft das Skript in WSL mit der
+Linux-Version von XC16.
 
 **macOS mit Apple Silicon:** XC16 ist ein Intel-Programm und läuft unter Rosetta (das Skript ruft es
 mit `arch -x86_64` auf). Das Installationsprogramm bricht auf Apple Silicon kommentarlos ab; dann das

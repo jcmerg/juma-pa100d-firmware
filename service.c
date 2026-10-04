@@ -34,13 +34,13 @@ extern void display_line(int, const char *);	// Display text string on specified
 extern void clear_buffer(void);					// Clear Juma PA-100D receive buffer
 
 // External Data
-extern int pa_state;				// PA Standby/Operate State
+extern volatile int pa_state;				// PA Standby/Operate State
 extern int key;						// Copy of TX request input
 extern int svc_flag;
 extern int adjust_flag;
-extern int rep_dly;
-extern int enc;
-extern unsigned int alarms;			// Alarm bits
+extern volatile int rep_dly;
+extern volatile int enc;
+extern volatile unsigned int alarms;			// Alarm bits
 extern char lcdpbuff[];				// General purpose buffer for displays, etc
 extern const char *on_off[];
 extern const char *auto_man[];
