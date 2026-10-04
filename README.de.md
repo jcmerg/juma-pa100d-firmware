@@ -360,10 +360,9 @@ nicht getestet.
 
 ## Bekannte Einschränkungen
 
-- **F-Sense QSK = On:** Nach einem Wechsel auf ein tieferes Band bleibt ein Fenster von wenigen
-  Millisekunden mit schlecht unterdrückten Oberwellen (die Frequenz lässt sich erst messen, wenn HF
-  anliegt). Wem das wichtig ist: Einstellung auf **Off** lassen oder nach einem Bandwechsel zuerst
-  kurz mit kleiner Leistung tasten.
+- **F-Sense QSK = On:** Nach einem Wechsel auf ein tieferes Band bleiben wenige Millisekunden mit
+  schlecht unterdrückten Oberwellen, weil sich die Frequenz erst messen lässt, wenn HF anliegt.
+  Siehe [F-Sense QSK](#f-sense-qsk).
 - **Fernsteuerung mit Polling:** Wie in v4.01a läuft der Remote-Timeout bei eingeschaltetem Polling
   nie ab, weil jede automatische Statusmeldung ihn neu startet. Ein ausgefallener Remote-Host wird
   deshalb nicht erkannt. Das ist bewusst so belassen, damit bestehende Fernsteuer-Programme weiter

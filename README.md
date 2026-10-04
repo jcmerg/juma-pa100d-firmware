@@ -354,10 +354,9 @@ this version.
 
 ## Known limitations
 
-- **F-Sense QSK = On:** after a change to a lower band there is a window of a few milliseconds
-  with poorly suppressed harmonics (the frequency can only be measured once RF is present). If
-  that matters to you, leave the setting **Off** or send a short low-power carrier after a band
-  change.
+- **F-Sense QSK = On:** after a change to a lower band, a few milliseconds of poorly suppressed
+  harmonics remain, because the frequency can only be measured once RF is present. See
+  [F-Sense QSK](#f-sense-qsk).
 - **Remote with polling:** as in v4.01a, the remote time-out never expires while polling is
   enabled, because every automatic status message restarts it. A failed remote host is therefore
   not detected. This is kept deliberately for compatibility with existing remote programs.
