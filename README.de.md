@@ -1,4 +1,4 @@
-# JUMA PA-100D Firmware – v4.03 (DL4JC)
+# JUMA PA-100D Firmware – v4.04 (DL4JC)
 
 Deutsch | [English](README.md)
 
@@ -53,7 +53,8 @@ mehrere Fehlerbehebungen, die auch v4.01a betreffen, ein **Xiegu**-Bandspannungs
 |---|---|
 | **Kein Relais-Umschalten unter Last** | Bei einem Bandwechsel wird zuerst die HF abgeschaltet. Die Filterrelais schalten, wenn die PA-Relais abgefallen sind, und TX bleibt 20 ms gesperrt, bis die Relais eingeschwungen sind. |
 | **Frequenz oberhalb des Filters** | Liegt die mit F-Sense gemessene Eingangsfrequenz 2 ms lang über dem gewählten Filter, geht die HF aus, bis das Band korrigiert ist. Das behebt den **O/C-Alarm** aus v4.01a beim ersten Senden nach einem Bandwechsel im F-Sense-Modus, z. B. 40 m → 20 m. Er entstand, weil 20 m durch das 40-m-Filter verstärkt wurde. Wirkt in allen Bandwahl-Modi. |
-| **Frequenz unterhalb des Filters** (F-Sense) | In den ersten 200 ms einer Aussendung: 3 ms unter dem gewählten Filter bedeutet HF aus, bis das Band gemessen ist (z. B. 80 m durch das 20-m-Filter, schlechte Oberwellenunterdrückung). |
+| **Frequenz unterhalb des Filters** (F-Sense) | In den ersten 200 ms einer Aussendung: 3 ms unter dem gewählten Filter bedeutet HF aus, bis das Band gemessen ist (z. B. 80 m durch das 20-m-Filter, schlechte Oberwellenunterdrückung). Die Prüfung endet mit der ersten Messung, damit modulierte Signale die Relais nicht rattern lassen. |
+| **Tieferes Band nur bei sauberem Träger** (F-Sense) | F-Sense misst modulierte Signale (Zweiton, Rauschen, SSB) zu tief, z. B. 14 MHz Zweiton als ca. 11 MHz. v4.01a wählte dann zu Beginn der Aussendung das 30-m-Filter. Ein tieferes Band wird jetzt nur gewählt, wenn alle Messwerte innerhalb von ca. 3 % liegen (Tune, CW); ein höheres Band weiterhin bei jedem Signal. |
 | **Schalter F-Sense QSK** | Neue Menüseite, siehe [unten](#f-sense-qsk). |
 
 ### Bandwahl
@@ -79,7 +80,7 @@ mehrere Fehlerbehebungen, die auch v4.01a betreffen, ein **Xiegu**-Bandspannungs
 - Linker-Skript: Der Programmspeicher endet **unterhalb des Bootloaders** (0x17D00). Das Build-Skript erzeugt keine HEX-Datei, die Daten im Bootloader-Bereich enthält.
 - **EEPROM-Erweiterungsblock** für die neuen Einstellungen, siehe [EEPROM](#eeprom-und-kompatibilität).
 - Service-Menü **Beep Tone**: Töne im sauberen Bereich des RS-928-Summers, siehe [Beep Tone](#beep-tone-service-menü).
-- Startbildschirm: `JUMA PA100 v4.03` / `OH2NLT/7SV DL4JC`. Jedes Release hat eine eigene Versionsnummer,
+- Startbildschirm: `JUMA PA100 v4.04` / `OH2NLT/7SV DL4JC`. Jedes Release hat eine eigene Versionsnummer,
   die beim Einschalten angezeigt wird; eine getrennte Build-Nummer gibt es nicht mehr. (Die Test-Builds
   vor v4.03 hießen v4.02a Build 1–5-DL4JC.)
 
@@ -248,7 +249,7 @@ ein Programmer (siehe [Wiederherstellung](#wiederherstellung-mit-programmer)).
    stammt aus der Zeit vor der Selbsthaltung, die der Bootloader seit 23.01.2007 hat, siehe `iBL.s` /
    `mini_lcd-trx2.c`.)
 5. Warten, bis *dsPIC6014A detected, firmware version 1.1* erscheint → OK.
-6. *open HEX file* → `firmware/Juma PA-100D v4.03.hex` wählen (liegt auch dem
+6. *open HEX file* → `firmware/Juma PA-100D v4.04.hex` wählen (liegt auch dem
    [neuesten Release](https://github.com/jcmerg/juma-pa100d-firmware/releases/latest) bei).
 7. Nur **„program flash“** darf angehakt sein. **„write data EEPROM“ und „configure registers“ dürfen
    nicht angehakt sein.** Es darf keine Fehlermeldung erscheinen (siehe unten).
@@ -272,7 +273,7 @@ noch die Gerätedatei oder Administratorrechte. Voraussetzung: Python 3 und pyse
 (`pip install pyserial`). Kabel und Prüfung der seriellen Schnittstelle (Schritte 1 und 2) bleiben gleich.
 
 ```
-python3 tools/juma-flash.py --port COM3 "firmware/Juma PA-100D v4.03.hex"
+python3 tools/juma-flash.py --port COM3 "firmware/Juma PA-100D v4.04.hex"
 ```
 
 (macOS/Linux: z. B. `--port /dev/cu.usbserial-XXXX` oder `/dev/ttyUSB0`; ohne `--port` werden die
@@ -405,7 +406,7 @@ nicht getestet.
 | `juma-pa100.h`, `pa100_eeprom.h` | Hardware-Definitionen, EEPROM-Strukturen |
 | `juma-trx2.gld` | Linker-Skript für den Ingenia-Bootloader |
 | `build-xc16.sh` | Build-Skript für XC16 |
-| `firmware/Juma PA-100D v4.03.hex` | Aktuelle Version |
+| `firmware/Juma PA-100D v4.04.hex` | Aktuelle Version |
 | `firmware/Juma PA-100D v4.01a Build 3 (original).hex` | Original v4.01a Build 3 (zum Zurückgehen) |
 | `tools/ingenia/ibl_dspiclist.xml` | Gerätedatei für den Ingenia-Loader |
 | `tools/juma-flash.py` | Serieller Firmware-Loader (Alternative zu Ingenia) |
@@ -417,6 +418,9 @@ nicht getestet.
 
 ## Bekannte Einschränkungen
 
+- **F-Sense mit modulierten Signalen:** Zweiton, Rauschen und SSB werden zu tief gemessen, die
+  Frequenzseite zeigt eine falsche Frequenz. Nach einem Wechsel auf ein tieferes Band das Band einmal
+  mit **Tune** (oder CW) setzen; ein Wechsel auf ein höheres Band wird bei jedem Signal erkannt.
 - **F-Sense QSK = On:** Nach einem Wechsel auf ein tieferes Band bleiben wenige Millisekunden mit
   schlecht unterdrückten Oberwellen, weil sich die Frequenz erst messen lässt, wenn HF anliegt.
   Siehe [F-Sense QSK](#f-sense-qsk).

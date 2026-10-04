@@ -103,7 +103,7 @@ const char Divide_By_Zero[] = {"Divide-By-Zero Trap\n\r"};
 const char Test_Terminated[] = {"Test Terminated\n\r"};
 const char Alarm_Test[] = {"Alarm System Test\n\r"};
 const char fsense_tst_on_off[] = {"\n\rF-Sense Test: %s\n\r"};
-const char fsense_hdr[] = {"   160m 80m 40m 30m 20m 17m 15m 12m 10m\n\r"};
+const char fsense_hdr[] = {"   160m 80m 40m 30m 20m 17m 15m 12m 10m   Min   Max kHz\n\r"};
 const char bad_value[] = {"\n\rIllegal Value!\n\r"};
 const char npc[] = {"Non-Printable Character"};
 

@@ -636,6 +636,16 @@
    HZ2000 instead of 1843.
  - Start-up screen: "JUMA PA100 v4.03" / "OH2NLT/7SV DL4JC".
  - Builds with MPLAB XC16 (build-xc16.sh). The program memory ends below the Ingenia boot loader (juma-trx2.gld).
+ v4.03 - DL4JC - 04/OCT/2026 (see above)
+ v4.04 - DL4JC - 04/OCT/2026
+ - F-Sense: a modulated signal (two-tone, noise, SSB) is counted too low by the input shaper, e.g. 14MHz two-tone as
+   approx. 11MHz in every sample. At the start of a transmission this selected a lower band, i.e. a filter below the
+   transmitted frequency (also in v4.01a). A lower band is now only selected from a clean carrier, whose samples lie
+   within approx. 3% of each other (measured: TUNE < 0.1%, two-tone and noise > 15%). A higher band is still selected
+   from any signal. (See eval_band())
+ - F-Sense: the low frequency test at the start of a transmission ends with the first evaluated sample set. With a
+   modulated signal it turned RF off and on with every sample set for 200mS, and the relays chattered.
+ - Serial test 'G' (F-Sense test) also shows the lowest and highest sample of each set, and clean/mod.
 */
 
 #include <stdio.h>
@@ -712,6 +722,8 @@ extern void get_yaesu(void);				// Get Yaesu 5-Byte binary frequency data
 // Frequency Counter Test
 extern int band_bins[];						// Found samples
 extern int freq_sample_ctr;					// Sample counter for F-SENSE mode
+extern volatile unsigned int fs_min, fs_max;	// Spread of the F-Sense sample set, see eval_band()
+extern volatile int fsense_evaluated;			// F-Sense sample set evaluated in this transmission, see tx_guard()
 extern int freq_ctr;						// Frequency counter averaging counter
 
 // External Data
@@ -2550,18 +2562,32 @@ void reset_fsense(void)						// Clear F-sense
 		band_bins[i] = 0;
 		} while (i--);
 
+	fs_min = 0xFFFF;						// Spread of the next sample set
+	fs_max = 0;
 	freq_sample_ctr = F_SAMPLES;			// Reload sample counter
 	}
+
+/*
+ A modulated signal (two-tone, noise, SSB speech) is counted too low, as the input shaper loses the cycles where the
+ amplitude is small: e.g. 14MHz two-tone is measured as approx. 11MHz in every sample. At the start of a transmission
+ this selected a lower band, i.e. a filter below the transmitted frequency. A lower band is therefore only selected from
+ a clean carrier (TUNE, CW), whose samples lie within FS_SPREAD of each other; modulated signals spread more. A higher
+ band, the safe direction for the amplifier, and any band while the band is unknown, are still selected at once. DL4JC
+*/
+#define FS_SPREAD	5				// Clean carrier: highest - lowest sample <= highest / 2^FS_SPREAD (approx. 3%)
 
 void eval_band()	// Improved F-sense - A.Ryan - 5B4AIY - 30/APR/2014
 	{
 	static int last_band;					// Initialised to zero by default
 	int i;
+	int clean;
 
 	if(!key) last_band = 0;					// Reset last_band in RX mode
 
 	if(!freq_sample_ctr)					// Decide when we have complete set of measurements available
 		{
+		clean = (fs_max >= fs_min) && ((fs_max - fs_min) <= (fs_max >> FS_SPREAD));
+
 		if(fsense_tst)						// Debug Mode - Can be invoked from Serial Test Suite
 			{
 			i = 0;
@@ -2569,6 +2595,8 @@ void eval_band()	// Improved F-sense - A.Ryan - 5B4AIY - 30/APR/2014
 			do	{
 				printf(_2I, band_bins[i]);
 				} while (++i < 10);
+
+			if(fs_max) printf("%5u %5u %s", fs_min, fs_max, clean ? "clean" : "mod");	// Sample spread, kHz. DL4JC
 
 			printf(New_Line);
 			}
@@ -2581,13 +2609,16 @@ void eval_band()	// Improved F-sense - A.Ryan - 5B4AIY - 30/APR/2014
 				if(band_bins[i]) break;
 				} while (--i);
 
-			if(last_band < i)
+			if((last_band < i)
+				&& ((i > Current_Band) || clean || (Current_Band == NOT_KNOWN) || (Current_Band == OUT_OF_BAND)))
 				{
 				last_band = i;
 				Current_Band = i;			// Set band
 				}
 
 			if(key) fsense_confirmed = TRUE;	// The band has been measured in this transmission. (F-Sense QSK Off)
+
+			if(key) fsense_evaluated = TRUE;	// The low frequency test in tx_guard() ends here. DL4JC
 
 			if(key) filter_mismatch = FALSE;	// A valid measurement during TX: the band is now correct, tx_guard() checks
 			}								// the filter again. (A band change is handled by set_relays().) DL4JC

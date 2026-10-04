@@ -45,6 +45,8 @@ int decay_counter;					// Power meter slow decay
 // Band selector
 int band_bins[10];					// Found samples
 int freq_sample_ctr;				// Sample counter
+volatile unsigned int fs_min = 0xFFFF;	// Lowest and highest valid frequency (kHz) in the current sample set, see eval_band(). DL4JC
+volatile unsigned int fs_max = 0;
 int freq_ctr;						// Input frequency sample averaging counter
 
 static unsigned int tone_counter; 	// Beep tone length (ms)
@@ -92,6 +94,7 @@ extern volatile unsigned int adc_raw[];
 volatile unsigned int main_heartbeat = 0;	// mS since the main or service loop last ran, reset by those loops
 volatile int isr_swr_trip = FALSE;			// Set here, transferred to the alarms in check_alarms()
 volatile int filter_mismatch = FALSE;		// Input frequency above the selected filter, reset by the main loop
+volatile int fsense_evaluated = FALSE;		// F-Sense sample set evaluated in this transmission, set by eval_band()
 volatile unsigned int relay_settle = 0;		// Relay settling timer, mS, set in set_relays()
 
 #define MISMATCH_TICKS	2			// mS that the input frequency must be above the selected filter
@@ -204,14 +207,18 @@ static void tx_guard(void)
 	if(mismatch_count >= MISMATCH_TICKS) filter_mismatch = TRUE;
 // Input frequency below the selected filter, F-Sense mode only, and only at the start of a transmission. The harmonics
 // would then be poorly suppressed until the new band had been measured. Later in a transmission SSB speech can give low
-// miscounts, which is why eval_band() only ever increases the band while transmitting.
+// miscounts, which is why eval_band() only ever increases the band while transmitting. The test ends with the first
+// evaluated sample set: a modulated signal (two-tone, noise, speech) is counted too low, and the test would otherwise
+// turn RF off and on again with every sample set until LOW_CHECK_MS, which made the relays chatter. DL4JC
 	if(KEY)
 		{
 		if(key_on_ms < 0xFFFF) key_on_ms++;
 		}
 	else key_on_ms = 0;
 
-	if((Band_Select_Mode == FREQ_SENSE) && KEY && (key_on_ms <= LOW_CHECK_MS)
+	if(!KEY) fsense_evaluated = FALSE;
+
+	if((Band_Select_Mode == FREQ_SENSE) && KEY && (key_on_ms <= LOW_CHECK_MS) && !fsense_evaluated
 		&& (freq > band_limits[0]) && (freq < filter_lower(eeprom.defval.band)))
 		{
 		if(low_count < LOW_TICKS) low_count++;
@@ -453,6 +460,12 @@ void __attribute__((interrupt, auto_psv)) _T3Interrupt(void)
 // Band select
 	if(freq_sample_ctr)					// Run only when previous measurement has been used
 		{
+		if(freq > band_limits[0])		// Valid sample: track the spread of the sample set, see eval_band(). DL4JC
+			{
+			if(freq < fs_min) fs_min = freq;
+			if(freq > fs_max) fs_max = freq;
+			}
+
 		do	{
 			if(freq <= band_limits[i])
 				{
