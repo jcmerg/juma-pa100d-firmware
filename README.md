@@ -59,7 +59,7 @@ serial mode, and can be built with the current Microchip **XC16** compiler.
 
 | Change | Effect |
 |---|---|
-| **Xiegu mode** (new) | Band voltages from the Xiegu ACC port (230 mV steps, including 60 m). See [table](#xiegu-band-voltages). |
+| **Xiegu mode** (new) | Band voltages from the Xiegu ACC port or other XPA125 band level sources such as Brick2/3 and SquareSDR (230 mV steps, including 60 m). See [table](#xiegu-band-voltages). |
 | **HR50 mode** (new) | The PA answers the serial commands of the HobbyPCB Hardrock-50: band, Operate/Standby and status from programs and transceivers with HR50 support. See [Hardrock-50 mode](#hardrock-50-mode). |
 | **KX2/KX3 (ASCII)** | Frequencies above 30 MHz are limited before the 16-bit conversion. In v4.01a, for example, 144 MHz wrapped to 12.9 MHz and selected the **20 m filter with TX enabled**. |
 | **Juma TRX-2** | An invalid band from the TRX-2 now means "unknown" (TX inhibited) instead of 10 m. |
@@ -112,7 +112,7 @@ Input as for the FT-817 band voltage. Thresholds midway between the levels, tole
 
 \* 60 m uses the 40 m filter. Below 115 mV the band is "out of band", above 2.415 V it is "unknown"; both inhibit TX.
 
-Devices using the Yaesu band voltage scheme (e.g. Brick2/3) use the **FT817/818** mode as before.
+Brick2/3 and SquareSDR output the same XPA125 band levels and also use the **Xiegu** mode.
 
 ### Hardrock-50 mode
 

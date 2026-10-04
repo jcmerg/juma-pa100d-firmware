@@ -60,7 +60,7 @@ mehrere Fehlerbehebungen, die auch v4.01a betreffen, ein **Xiegu**-Bandspannungs
 
 | Änderung | Wirkung |
 |---|---|
-| **Xiegu-Modus** (neu) | Bandspannungen vom Xiegu-ACC-Anschluss (230-mV-Schritte, inklusive 60 m). Siehe [Tabelle](#xiegu-bandspannungen). |
+| **Xiegu-Modus** (neu) | Bandspannungen vom Xiegu-ACC-Anschluss oder anderen Quellen mit XPA125-Bandspannungen wie Brick2/3 und SquareSDR (230-mV-Schritte, inklusive 60 m). Siehe [Tabelle](#xiegu-bandspannungen). |
 | **HR50-Modus** (neu) | Die PA beantwortet die seriellen Befehle der HobbyPCB Hardrock-50: Band, Oper/Standby und Status von Programmen und Transceivern mit HR50-Unterstützung. Siehe [Hardrock-50-Modus](#hardrock-50-modus). |
 | **KX2/KX3 (ASCII)** | Frequenzen über 30 MHz werden vor der 16-Bit-Umrechnung begrenzt. In v4.01a wurden z. B. aus 144 MHz rechnerisch 12,9 MHz, und das **20-m-Filter wurde mit TX-Freigabe** gewählt. |
 | **Juma TRX-2** | Ein ungültiges Band vom TRX-2 ergibt jetzt „unbekannt“ (TX gesperrt) statt 10 m. |
@@ -113,7 +113,7 @@ Eingang wie bei der FT-817-Bandspannung. Schaltschwellen mittig zwischen den Stu
 
 \* 60 m nutzt das 40-m-Filter. Unter 115 mV gilt „Out of Band“, über 2,415 V „unbekannt“. Beides sperrt TX.
 
-Geräte mit Yaesu-Bandspannungen (z. B. Brick2/3) nutzen wie bisher den Modus **FT817/818**.
+Brick2/3 und SquareSDR liefern dieselben XPA125-Bandspannungen und nutzen ebenfalls den Modus **Xiegu**.
 
 ### Hardrock-50-Modus
 
