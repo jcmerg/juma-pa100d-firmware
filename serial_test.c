@@ -74,6 +74,12 @@ extern struct
 	struct calval calval;
 	} cal;
 
+// DL4JC Extension Data
+extern struct
+	{
+	struct extval extval;
+	} ext;
+
 // Local Data
 const char temp_format[] = {"Sensor:%5.1f%c Displayed:%4.0f%c\n\r"};
 const char LCD_Test[] = {"LCD Bar Graph & Character Test"};
@@ -134,7 +140,7 @@ void dump_eeprom(void)
 
 	printf("\n\rDump EEPROM contents\n\r%4s%23s\n\r%.23s%.22s", "ADDR", "DATA", dividing_line, dividing_line);
 
-	for(i = 0; i < 256; i += 2)					// Byte address for EEPROM, but data is stored in words
+	for(i = 0; i < 0x110; i += 2)				// Byte address for EEPROM, but data is stored in words. Includes the extension block at EEEXT.
 		{
 		ReadEE(EEPAGE, (i + EEDEF), (int *)&w, WORD);	// EEPROM Address 8 high bits, address + physical EEPROM start 16 low bits
 
@@ -454,7 +460,7 @@ void serial_test(void)
 				printf(fan_temp_fmt, "Temperature Alarm Limit: ", Alarm_Temp, T_Char[Temp_Scale]);
 				printf(fan_temp_fmt, "Fan Start Temperature  : ", Fan_Start, T_Char[Temp_Scale]);
 				printf("Band Display Units     : %s\n\r", band_units[Band_Units]);
-				printf("Graphic Limits Display : %s\n\r", on_off[Graph_Limits]);
+				printf("Graphic Limits Display : %s\n\r", on_off[eeprom.defval.graph_limits]);
 				printf("F-Sense QSK            : %s\n\r", on_off[FSense_QSK]);
 				printf("Graphic Display Type   : %s\n\r", graph_type[Scale_Type]);
 				printf("Power Meter Type       : %s\n\r", pwr_mtr[Power_Units]);

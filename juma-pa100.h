@@ -36,15 +36,8 @@
 #define	Cal_Checksum		cal.calval.c_csum			// Shorthand for Calibration Checksum
 #define	Cfg_Checksum		eeprom.defval.d_csum		// Shorthand for Configuration Checksum
 #define Enabled_Alarms		cal.calval.alarm_flags		// Shorthand for Enabled Alarms mask
-/*
- eeprom.defval.graph_limits: bit 0 = Graphical Limits Display On/Off, bit 1 = F-Sense QSK On/Off. The F-Sense QSK setting
- uses the spare bit so that the EEPROM layout is unchanged. Set F-Sense QSK to Off before loading the original firmware,
- as it only expects 0 or 1 here. DL4JC
-*/
-#define GRAPH_LIMITS_BIT	0x0001
-#define FSENSE_QSK_BIT		0x0002
-#define Graph_Limits		(eeprom.defval.graph_limits & GRAPH_LIMITS_BIT)			// Graphical Limits Display, 0/1
-#define FSense_QSK			((eeprom.defval.graph_limits & FSENSE_QSK_BIT) ? 1 : 0)	// F-Sense QSK, 0/1
+#define FSense_QSK			ext.extval.fsense_qsk		// Shorthand for F-Sense QSK (extension block)
+#define	Ext_Checksum		ext.extval.e_csum			// Shorthand for Extension block Checksum
 
 //Standard Constants
 #define	MAX_SERVICE_PAGES	13
@@ -431,6 +424,9 @@
 #define EEDEF 				0xF000		// EEPROM default values storage area
 #define EECAL 				0xF040		// EEPROM calibration values storage area
 #define EE_FD_LOC 			0xF0F0		// Factory Default Reset Counter address in EEPROM
+#define EEEXT				0xF100		// DL4JC extension block, not used by the original firmware
+#define EXT_MAGIC			0x4A43		// 'JC'
+#define EXT_VERSION			1
 
 // PA100 board I/O definitions
 // Port A Switches

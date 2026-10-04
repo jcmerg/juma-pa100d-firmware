@@ -611,8 +611,10 @@
  Build 3-DL4JC
  - New User Configuration page "F-Sense QSK", only shown in the F-Sense mode. Off (default): TX is only enabled once the
    input frequency has been measured in the current transmission, approx. 20-40mS without the PA at the start of each
-   transmission. On: TX immediately, for full QSK, as in Build 2. Stored in bit 1 of eeprom.defval.graph_limits, the EEPROM
-   layout is unchanged. Set it to Off before loading the original firmware.
+   transmission. On: TX immediately, for full QSK, as in Build 2.
+ - New EEPROM extension block at 0xF100 with its own checksum for settings added by DL4JC (see pa100_eeprom.h). The
+   original configuration and calibration blocks are unchanged, so there is no checksum error when loading this
+   firmware, and the original firmware can be loaded again without losing the calibration.
  Build 2-DL4JC
  - F-Sense mode only: if, within the first 200mS of a transmission, the input frequency is below the selected filter for
    3mS, RF is also turned off until the band has been measured. This avoids poorly suppressed harmonics on the first
@@ -1080,6 +1082,17 @@ union
 	unsigned int ee[sizeof(struct calval) / 2];
 	} cal;
 
+// DL4JC Extension Data, see pa100_eeprom.h
+union
+	{
+	struct extval extval;
+	unsigned int ee[sizeof(struct extval) / 2];
+	} ext;
+
+void set_ext_defaults(void);			// Extension block functions, defined after save_defval()
+void save_extval(void);
+unsigned int read_extval(void);
+
 /*
  CRC16 is a simple 16-bit cyclic redundancy checksum that provides a more robust method of checking data than many other methods.
  The routine returns a 16-bit CRC. Obviously, the largest block of data that can be checked is limited to 65536 bytes. For
@@ -1222,6 +1235,9 @@ void set_factory_defaults(void)
 	cal.calval.freq_cal = FREQ_CAL;					// Nominal frequency meter calibration factor (999985)
 	cal.calval.lo_pwr_offset = LO_PWR_OFFSET;		// Low power range correction
 
+// Extension values
+	set_ext_defaults();
+
 // Increment factory default reset counter
 	ReadEE(EEPAGE, EE_FD_LOC, &fd_counter, WORD);
 	fd_counter++;
@@ -1245,6 +1261,60 @@ void save_defval(void)
  		EraseEE(EEPAGE, ((2 * i) + EEDEF), WORD);
 		WriteEE((int *)&(eeprom.storage[i]), EEPAGE, ((2 * i) + EEDEF), WORD);	// EEPROM Address 8 high bits, address + physical EEPROM start 16 low bits
 		}
+
+	save_extval();						// The extension block holds further user settings. DL4JC
+	}
+
+// Extension block defaults
+void set_ext_defaults(void)
+	{
+	int i = 0;
+
+	do	{
+		ext.ee[i] = 0;					// All settings off, spare words 0
+		} while (++i < (sizeof(struct extval) / 2));
+
+	ext.extval.magic = EXT_MAGIC;
+	ext.extval.version = EXT_VERSION;
+	}
+
+// Save extension block
+void save_extval(void)
+	{
+	int i;
+
+	Ext_Checksum = 0;
+
+	for(i = 0; i < (sizeof(struct extval) / 2); i++)
+		{
+		if(i < ((sizeof(struct extval) / 2) - 1)) Ext_Checksum = crc_16(ext.ee[i], Ext_Checksum);
+
+		EraseEE(EEPAGE, ((2 * i) + EEEXT), WORD);
+		WriteEE((int *)&(ext.ee[i]), EEPAGE, ((2 * i) + EEEXT), WORD);
+		}
+	}
+
+// Read extension block. If it is missing or invalid, set the extension defaults. Returns TRUE if it was invalid.
+unsigned int read_extval(void)
+	{
+	int i;
+	unsigned int checksum = 0;
+
+	for(i = 0; i < (sizeof(struct extval) / 2); i++)
+		{
+		ReadEE(EEPAGE, ((2 * i) + EEEXT), (int *)&(ext.ee[i]), WORD);
+
+		if(i < ((sizeof(struct extval) / 2) - 1)) checksum = crc_16(ext.ee[i], checksum);
+		}
+
+	if((checksum != Ext_Checksum) || (ext.extval.magic != EXT_MAGIC) || (ext.extval.version != EXT_VERSION)
+		|| (FSense_QSK < 0) || (FSense_QSK > 1))
+		{
+		set_ext_defaults();
+		return TRUE;
+		}
+
+	return FALSE;
 	}
 
 // Read defaults
@@ -2037,7 +2107,7 @@ const char * display_alarms(void)
 // Calculate & display bar graph meter
 int scaled_value(void)
 	{
-	if(Graph_Limits)					// If Graph Limits is set to ON...
+	if(eeprom.defval.graph_limits)		// If Graph Limits is set to ON...
 		{
 		if(sub_page0 == 1)
 			{
@@ -2189,7 +2259,11 @@ void save_settings(int prompt, int mode)
 		{
 		if(mode & 1) read_calval();			// Restore previous System Calibration Settings
 
-		if(mode & 2) read_defval();			// Restore previous User Configuration Settings
+		if(mode & 2)						// Restore previous User Configuration Settings
+			{
+			read_defval();
+			read_extval();
+			}
 
 		flag = FALSE;
 		beep(HZ587_31, Beep_Time);
@@ -2757,11 +2831,8 @@ void cfg_11(void)						// Select Band Units (MHz/Metres)
 
 void cfg_12(void)						// Select graphical display of parameter limits. 
 	{
-	int on = Graph_Limits;				// Bit 0 only, bit 1 is the F-Sense QSK setting.
-
-	get_one_zero(&on);
-	eeprom.defval.graph_limits = (eeprom.defval.graph_limits & ~GRAPH_LIMITS_BIT) | (on ? GRAPH_LIMITS_BIT : 0);
-	sprintf(lcdpbuff, cfg_12_Msg, on_off[on]);
+	get_one_zero(&eeprom.defval.graph_limits);
+	sprintf(lcdpbuff, cfg_12_Msg, on_off[eeprom.defval.graph_limits]);
 	}
 
 void cfg_13(void)						// Select type of graphic display scale
@@ -2789,11 +2860,8 @@ void cfg_15(void)						// Start-Up Page Select
 */
 void cfg_16(void)
 	{
-	int on = FSense_QSK;
-
-	get_one_zero(&on);
-	eeprom.defval.graph_limits = (eeprom.defval.graph_limits & ~FSENSE_QSK_BIT) | (on ? FSENSE_QSK_BIT : 0);
-	sprintf(lcdpbuff, cfg_2_Msg, on_off[on]);
+	get_one_zero(&FSense_QSK);
+	sprintf(lcdpbuff, cfg_2_Msg, on_off[FSense_QSK]);
 	}
 
 void (*set_cfg[])(void) = {				// Indexed by: sub_page1
@@ -2918,6 +2986,8 @@ int main(void)
 // Read calibration & default values from EEPROM
 	y = read_calval();
 	w = read_defval();
+
+	if(read_extval()) save_extval();	// Extension block missing (first start of this firmware) or invalid: save the defaults.
 
  	if((Serial_Test_Mode == SERIAL_TEST) && (Band_Select_Mode > 2))
 		printf(EEPROM_Chksum, checksum_msg[y], checksum_msg[w], fd_counter);
@@ -3214,7 +3284,7 @@ int main(void)
 // Evaluate TX possibility
 			if((key) && (pa_state) && (!alarms) && (Current_Band != NOT_KNOWN) && (Current_Band != OUT_OF_BAND)
 				&& (!relay_settle) && (!filter_mismatch)
-				&& ((Band_Select_Mode != FREQ_SENSE) || FSense_QSK || fsense_confirmed))	// with F-Sense QSK Off: band measured		// and the filter relays have settled and match the input frequency,
+				&& ((Band_Select_Mode != FREQ_SENSE) || FSense_QSK || fsense_confirmed))	// and with F-Sense QSK Off the band has been measured,
 				{
 				TX_ON = TRANSMIT;					// RF on
 				tx = 'T';							// State is Transmit

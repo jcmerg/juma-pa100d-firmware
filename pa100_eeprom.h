@@ -46,4 +46,19 @@ struct calval
 	int lo_pwr_offset;				// Offset for the low power range of the RF power meter
 	unsigned int c_csum;			// Checksum
 	};
+/*
+ Extension block for settings added by DL4JC. It is stored separately at EEEXT, so that the original configuration and
+ calibration blocks keep their layout: no checksum error when loading this firmware, and the original firmware can
+ still be loaded without losing the calibration (it ignores this block). If the block is missing or invalid, only
+ these settings are set to their defaults. New settings use a spare word and keep their default value 0, or increase
+ EXT_VERSION.
+*/
+struct extval
+	{
+	unsigned int magic;				// EXT_MAGIC
+	unsigned int version;			// EXT_VERSION
+	int fsense_qsk;					// F-Sense QSK, 0 = Off, 1 = On
+	int spare[4];					// Reserved, 0
+	unsigned int e_csum;			// Checksum
+	};
 
