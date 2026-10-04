@@ -99,12 +99,20 @@ def load_hex(path):
             rows[row] = bytearray(BLANK * (ROW_BYTES // 4))
         rows[row][byte_addr - row * 2] = b
 
-    if 0 not in rows:
-        rows[0] = bytearray(BLANK * (ROW_BYTES // 4))
+    if 0 not in rows or 0x100 not in rows:
+        raise FlashError("HEX file has no reset vector or no start address 0x100, not a PA-100D firmware")
+    reset, start = row_words(rows[0])[0:2], row_words(rows[0x100])[0:2]
+    if (reset[0] >> 16) != 0x04 or start != reset:
+        raise FlashError("HEX file has no GOTO __reset at 0x100 (linked without juma-trx2.gld?). "
+                         "The boot loader could not start this firmware.")
     for i, word in enumerate(RESET_GOTO):  # Keep the boot loader reachable
         rows[0][i * 4:i * 4 + 4] = bytes((word & 0xFF, (word >> 8) & 0xFF, word >> 16, 0))
 
     return dict(sorted(rows.items())), sorted(skipped)
+
+
+def row_words(data):
+    return [data[i] | (data[i + 1] << 8) | (data[i + 2] << 16) for i in range(0, ROW_BYTES, 4)]
 
 
 def addr_bytes(pc):
@@ -189,10 +197,6 @@ class Loader:
         self.ser.flush()
 
 
-def row_words(data):
-    return [data[i] | (data[i + 1] << 8) | (data[i + 2] << 16) for i in range(0, ROW_BYTES, 4)]
-
-
 def progress(text, i, n):
     print(f"\r{text} {i}/{n} rows", end="", flush=True)
 
@@ -254,11 +258,24 @@ def main():
         if devid != 0x02C3:
             raise FlashError("not a dsPIC30F6014A, stopping")
 
+        # Row 0 holds the reset vector (GOTO boot loader) and the interrupt vectors. Check that the PA has the
+        # expected boot loader reset vector before anything is written, as otherwise its boot loader is at a
+        # different address. Row 0 is only rewritten if it differs: between its erase and write (a few mS)
+        # a power failure would leave no reset vector, and the boot loader could then only be restored with
+        # a programmer.
+        row0 = ldr.read_words([2 * k for k in range(ROW_ADDR // 2)])
+        if tuple(row0[0:2]) != RESET_GOTO:
+            raise FlashError(f"unexpected reset vector in the PA ({row0[0]:06X} {row0[1]:06X}), expected GOTO "
+                             f"0x{BOOT_START:06X}. Different boot loader? Nothing has been written.")
+
         if not args.verify_only:
+            todo = rows if row0 != row_words(rows[0]) else {pc: d for pc, d in rows.items() if pc}
+            if 0 not in todo:
+                print("Row 0 (reset and interrupt vectors) unchanged, not rewritten")
             t = time.monotonic()
-            for i, (pc, data) in enumerate(rows.items(), 1):  # Row 0 first: the boot loader reset vector is restored at once
+            for i, (pc, data) in enumerate(todo.items(), 1):
                 ldr.write_row(pc, data)
-                progress("Writing", i, len(rows))
+                progress("Writing", i, len(todo))
             print(f" ({time.monotonic() - t:.0f} s)")
 
         bad = verify(ldr, rows)
