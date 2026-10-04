@@ -2587,12 +2587,23 @@ void get_one_zero(int *value)
  code into a small function, and then collecting these functions into an array, and finally executing the appropriate
  function using the page as an index into the array. Adrian Ryan - 5B4AIY May 2012.
 */
+/*
+ Menu order of the band select modes. The stored values are unchanged (MANUAL = 5, XIEGU = 6), so that the saved settings
+ remain compatible with the original firmware, but the menu shows Xiegu before Manual. DL4JC
+*/
+const int bsel_menu[] = {YAESU, ELECRAFT_KX3, JUMA_TRX2, FREQ_SENSE, FT_817, XIEGU, MANUAL};
+
 void cfg_0(void)	// Auto band select mode (0 = Yaesu CAT, 1 = Elecraft KX-3, 2 = Juma TRX-2, 3 = F-Sense, 4 = FT-817, 5 = Manual, 6 = Xiegu)
 	{
 	static int current_mode;
+	int pos = 0;
 
 	current_mode = Band_Select_Mode;
-	set_value(1, &Band_Select_Mode, MAX_BSEL_MODE, YAESU);
+
+	while((pos < MAX_BSEL_MODE) && (bsel_menu[pos] != Band_Select_Mode)) pos++;	// Find the menu position of the current mode,
+
+	set_value(1, &pos, MAX_BSEL_MODE, 0);		// adjust it,
+	Band_Select_Mode = bsel_menu[pos];			// and select the mode at the new position.
 
 	if(current_mode != Band_Select_Mode)		// The mode has changed,
 		{
