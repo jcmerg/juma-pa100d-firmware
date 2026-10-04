@@ -226,10 +226,10 @@ usable remote control. The serial update therefore only works after a one-off pr
    dsPIC30F6014A. This file is a complete chip image: the JUMA firmware v1.04, the Ingenia boot
    loader and the configuration bits. J19 is the 6-pin header next to the dsPIC (IC9) on the back
    of the front-panel board, see the photo *rs928ampfrontpanel.jpg* in the
-   [OARC wiki](https://wiki.oarc.uk/rs928ampreview). The pins are not labelled on the board; check the
-   assignment to the programmer (MCLR, VDD, VSS, PGD, PGC) against the
-   [hermes-lite thread](https://groups.google.com/g/hermes-lite/c/breb9kSmeYc/m/xKfDIW6zEQAJ)
-   by KD2NFC and the files linked there before connecting.
+   [OARC wiki](https://wiki.oarc.uk/rs928ampreview). The PICkit plugs directly onto J19: **the arrow on
+   the PICkit (pin 1) goes to the framed pin of J19**. Instructions and files:
+   [hermes-lite thread](https://groups.google.com/g/hermes-lite/c/breb9kSmeYc/m/xKfDIW6zEQAJ) by
+   KD2NFC.
 2. Check that the PA starts with the JUMA firmware.
 3. Then load this firmware over the serial port with Ingenia, exactly as described in
    [Flashing with the Ingenia boot loader](#flashing-with-the-ingenia-boot-loader) (OPER + PWR).

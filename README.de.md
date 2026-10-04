@@ -229,10 +229,10 @@ Programmierschritt:
    dsPIC30F6014A schreiben. Die Datei ist ein komplettes Chip-Abbild: JUMA-Firmware v1.04,
    Ingenia-Bootloader und Konfigurationsbits. J19 ist die 6-polige Stiftleiste neben dem dsPIC (IC9)
    auf der Rückseite der Frontplatine, siehe das Foto *rs928ampfrontpanel.jpg* im
-   [OARC-Wiki](https://wiki.oarc.uk/rs928ampreview). Die Pins sind auf der Platine nicht beschriftet;
-   die Zuordnung zum Programmer (MCLR, VDD, VSS, PGD, PGC) vor dem Anschließen mit dem
+   [OARC-Wiki](https://wiki.oarc.uk/rs928ampreview). Der PICkit wird direkt auf J19 gesteckt: **der
+   Pfeil auf dem PICkit (Pin 1) kommt auf den umrahmten Pin von J19**. Anleitung und Dateien:
    [hermes-lite-Thread](https://groups.google.com/g/hermes-lite/c/breb9kSmeYc/m/xKfDIW6zEQAJ) von
-   KD2NFC und den dort verlinkten Dateien abgleichen.
+   KD2NFC.
 2. Prüfen, ob die PA mit der JUMA-Firmware startet.
 3. Danach diese Firmware über die serielle Schnittstelle mit Ingenia laden, genau wie unter
    [Flashen mit dem Ingenia-Bootloader](#flashen-mit-dem-ingenia-bootloader) beschrieben (OPER + PWR).
