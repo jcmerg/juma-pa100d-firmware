@@ -90,7 +90,11 @@ volatile int filter_mismatch = FALSE;		// Input frequency above the selected fil
 volatile unsigned int relay_settle = 0;		// Relay settling timer, mS, set in set_relays()
 
 #define MISMATCH_TICKS	2			// mS that the input frequency must be above the selected filter
+#define LOW_TICKS		3			// mS that the input frequency must be below the selected filter (F-Sense only)
+#define LOW_CHECK_MS	200			// The low frequency test is only made within this time after KEY becomes active
 static int mismatch_count;					// Number of consecutive mS above the selected filter
+static int low_count;						// Number of consecutive mS below the selected filter
+static unsigned int key_on_ms;				// mS since KEY became active
 /*
  Highest input frequency (kHz) for the low-pass filter selected for a band. The limits are those used for the band
  selection, see band_limits[]. Bands 5 and 6 share the 14-18MHz filter. The 21-28MHz filter, also used for OUT_OF_BAND
@@ -101,6 +105,15 @@ static unsigned int filter_limit(int band)
 	if(band >= 1 && band <= 4) return band_limits[band];
 	if(band == 5 || band == 6) return band_limits[6];
 	return 0xFFFF;
+	}
+
+// Lowest input frequency (kHz) for the low-pass filter selected for a band, 0 = no limit.
+static unsigned int filter_lower(int band)
+	{
+	if(band >= 1 && band <= 4) return band_limits[band - 1];
+	if(band == 5 || band == 6) return band_limits[4];
+	if(band >= 7 && band <= 9) return band_limits[6];
+	return 0;
 	}
 
 static unsigned long fwd_sum, rev_sum;		// SWR measurement sums
@@ -184,6 +197,23 @@ static void tx_guard(void)
 	else mismatch_count = 0;
 
 	if(mismatch_count >= MISMATCH_TICKS) filter_mismatch = TRUE;
+// Input frequency below the selected filter, F-Sense mode only, and only at the start of a transmission. The harmonics
+// would then be poorly suppressed until the new band had been measured. Later in a transmission SSB speech can give low
+// miscounts, which is why eval_band() only ever increases the band while transmitting.
+	if(KEY)
+		{
+		if(key_on_ms < 0xFFFF) key_on_ms++;
+		}
+	else key_on_ms = 0;
+
+	if((Band_Select_Mode == FREQ_SENSE) && KEY && (key_on_ms <= LOW_CHECK_MS)
+		&& (freq > band_limits[0]) && (freq < filter_lower(eeprom.defval.band)))
+		{
+		if(low_count < LOW_TICKS) low_count++;
+		}
+	else low_count = 0;
+
+	if(low_count >= LOW_TICKS) filter_mismatch = TRUE;
 // KEY
 	if(KEY) key_off_count = 0;
 	else if(key_off_count < KEY_OFF_TICKS) key_off_count++;
