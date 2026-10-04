@@ -80,6 +80,9 @@ extern volatile unsigned int adc_raw[];
 // TX protection, see tx_guard()
 #define MAIN_TIMEOUT	2000		// mS without a main loop cycle before RF is forced off
 #define KEY_OFF_TICKS	2			// KEY must be inactive for this many mS before RF is forced off
+#define SWR_BLANK		20			// mS after TX_ON is turned on before the SWR is tested (relay settling)
+#define SWR_MS_PER_SAMPLE	4		// SWR averaging window in mS per Power Averaging sample (approx. one main loop cycle)
+#define SWR_MIN_WINDOW	8			// Minimum SWR averaging window, mS
 
 volatile unsigned int main_heartbeat = 0;	// mS since the main or service loop last ran, reset by those loops
 volatile int isr_swr_trip = FALSE;			// Set here, transferred to the alarms in check_alarms()
@@ -87,6 +90,7 @@ volatile int isr_swr_trip = FALSE;			// Set here, transferred to the alarms in c
 static unsigned long fwd_sum, rev_sum;		// SWR measurement sums
 static int swr_count;						// Number of samples in the sums
 static int key_off_count;					// Number of consecutive mS that KEY has been inactive
+static int swr_blank;						// SWR test blanking counter, mS
 /*
  TX Protection
  Previously all the protection was in the main loop. Whenever the main loop was blocked, for example waiting for a button
@@ -101,27 +105,50 @@ static int key_off_count;					// Number of consecutive mS that KEY has been inac
  It never turns TX_ON on, that remains the responsibility of the main loop. The main loop turns it on again when the
  condition has cleared, KEY is active, and there are no alarms.
 
- The SWR test uses the same averaging as analog_measurements(): cal.calval.samples pairs, with the low power offset added
- to the forward value. Rather than calculate the SWR, the reflection coefficient is compared with that of the trip limit:
+ The SWR test is only made while TX_ON is on, and not for the first SWR_BLANK mS, as the relays are still settling and
+ short reflected power peaks are normal. (The SWR alarm in check_alarms() still covers the OPERATE state without TX.)
+ The forward and reverse values, with the low power offset added to the forward value as in analog_measurements(), are
+ averaged over a window of Power Averaging (cal.calval.samples) * SWR_MS_PER_SAMPLE mS, minimum SWR_MIN_WINDOW mS. In the main
+ loop each sample took one loop cycle of approx. 4mS, so this gives about the same sensitivity. Testing every single mS
+ without averaging caused nuisance trips, e.g. with a non-resonant antenna at SWR 2.4:1 and the trip limit at 3.0:1.
+ Rather than calculate the SWR, the reflection coefficient is compared with that of the trip limit:
 
 	SWR > T  <=>  Ro > (T - 1) / (T + 1)  <=>  rev * (T + 1) > fwd * (T - 1)
 
  With the SWR scaled by 100, as in SWR_Trip, this becomes: rev * (SWR_Trip + 100) > fwd * (SWR_Trip - 100)
  Since the sums are compared, the division by the number of samples is not required. The maximum product is
- 16 * 4095 * 1000, which fits easily in an unsigned long.
+ 64 * (4095 + 150) * 1000, which fits easily in an unsigned long.
 */
 static void tx_guard(void)
 	{
 	unsigned int trip = SWR_Trip;
-	int samples = (int)cal.calval.samples;
+	int window = (int)cal.calval.samples;
 
-	if(samples < SAMPLE_MIN) samples = SAMPLE_MIN;	// Protect against a corrupted setting.
+	if(window < SAMPLE_MIN || window > SAMPLE_MAX) window = SAMPLE_MIN;	// Protect against a corrupted setting.
+
+	window *= SWR_MS_PER_SAMPLE;
+
+	if(window < SWR_MIN_WINDOW) window = SWR_MIN_WINDOW;
 
 // SWR
-	fwd_sum += (unsigned long)(adc_raw[FWD_PWR - ID_CUR] + cal.calval.lo_pwr_offset);
-	rev_sum += (unsigned long)adc_raw[REV_PWR - ID_CUR];
+	if(!TX_ON)									// Not transmitting, so restart the blanking time,
+		swr_blank = SWR_BLANK;
+	else if(swr_blank)							// or wait until the relays have settled.
+		swr_blank--;
 
-	if(++swr_count >= samples)
+	if(swr_blank)
+		{
+		fwd_sum = rev_sum = 0UL;
+		swr_count = 0;
+		}
+	else
+		{
+		fwd_sum += (unsigned long)(adc_raw[FWD_PWR - ID_CUR] + cal.calval.lo_pwr_offset);
+		rev_sum += (unsigned long)adc_raw[REV_PWR - ID_CUR];
+		swr_count++;
+		}
+
+	if(swr_count >= window)
 		{
 		if(pa_state
 			&& (fwd_sum >= (unsigned long)PWR_MTR_DEAD_BAND * (unsigned long)swr_count)	// Only if there is some power,
