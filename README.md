@@ -182,7 +182,7 @@ Possible at any time, without preparation and without losing the calibration:
 | HR50 | KX2/KX3 (band from the `FA` frequency data, polling off); the `HR…` commands are ignored |
 | F-Sense QSK | ignored |
 
-The original HEX file is included in the repository: `Juma PA-100D.hex` (v4.01a Build 3).
+The original HEX file is included in the repository: `firmware/Juma PA-100D v4.01a Build 3 (original).hex`.
 Note: the original F-Sense mode still has the O/C problem described above.
 
 ---
@@ -241,7 +241,8 @@ programmer (see [Recovery](#recovery-with-a-programmer)).
    (The note "keep PWR pressed" in the old TRX-2 instructions predates the power latch, which the
    boot loader has had since 23.01.2007, see `iBL.s` / `mini_lcd-trx2.c`.)
 5. Wait until *dsPIC6014A detected, firmware version 1.1* appears → OK.
-6. *open HEX file* → select `Juma PA-100D v4.02a Build 5-DL4JC.hex`.
+6. *open HEX file* → select `firmware/Juma PA-100D v4.02a Build 5-DL4JC.hex` (also attached to the
+   [latest release](https://github.com/jcmerg/juma-pa100d-firmware/releases/latest)).
 7. Only **"program flash"** may be ticked. **"write data EEPROM" and "configure registers" must not
    be ticked.** There must be no error message (see below).
 8. *start write* → takes approx. 10–15 s at 115200 baud → *write completed*.
@@ -264,7 +265,7 @@ administrator rights. Requirements: Python 3 and pyserial (`pip install pyserial
 serial port check (steps 1 and 2) are the same.
 
 ```
-python3 tools/juma-flash.py --port COM3 "Juma PA-100D v4.02a Build 5-DL4JC.hex"
+python3 tools/juma-flash.py --port COM3 "firmware/Juma PA-100D v4.02a Build 5-DL4JC.hex"
 ```
 
 (macOS/Linux: e.g. `--port /dev/cu.usbserial-XXXX` or `/dev/ttyUSB0`; without `--port` the available
@@ -360,7 +361,7 @@ project is built without optimisation, `-O0`, as before).
 ./build-xc16.sh
 ```
 
-Output: `Juma PA-100D <VERSION> Build <BUILD>.hex` in the project folder. Version and build number
+Output: `firmware/Juma PA-100D <VERSION> Build <BUILD>.hex`. Version and build number
 come from `juma-pa100.h` (`VERSION`, `BUILD_NUMBER`). The script
 
 - compiles all modules with `-mcpu=30F6014A -Wall`,
@@ -395,8 +396,8 @@ this version.
 | `juma-pa100.h`, `pa100_eeprom.h` | Hardware definitions, EEPROM structures |
 | `juma-trx2.gld` | Linker script for the Ingenia boot loader |
 | `build-xc16.sh` | Build script for XC16 |
-| `Juma PA-100D v4.02a Build *-DL4JC.hex` | Current build |
-| `Juma PA-100D.hex` | Original v4.01a Build 3 (to go back) |
+| `firmware/Juma PA-100D v4.02a Build *-DL4JC.hex` | DL4JC builds (the highest build number is the current one) |
+| `firmware/Juma PA-100D v4.01a Build 3 (original).hex` | Original v4.01a Build 3 (to go back) |
 | `tools/ingenia/ibl_dspiclist.xml` | Device file for the Ingenia loader |
 | `tools/juma-flash.py` | Serial firmware loader (alternative to Ingenia) |
 | `bootloader/` | Boot loader source and HEX; `Bootldr_Juma-PA100_v104.hex` = complete image for a first installation with a programmer (RS-928) |
