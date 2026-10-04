@@ -7,7 +7,7 @@
 
 // Version Data
 #define VERSION				"v4.02a"
-#define BUILD_NUMBER		"1-DL4JC"
+#define BUILD_NUMBER		"2-DL4JC"
 #define BUILD_DATE			"04/OCT/2026"
 
 // Macro Definitions

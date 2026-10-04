@@ -608,6 +608,7 @@
    the occasional O/C alarm in the F-Sense mode on the first transmission after a band change, e.g. 40m to 20m, when
    the 20m signal was amplified through the 40m filter until the new band had been measured. There is no additional
    delay when the band is unchanged, so full QSK still works.
+ Build 2-DL4JC
  - F-Sense mode only: if, within the first 200mS of a transmission, the input frequency is below the selected filter for
    3mS, RF is also turned off until the band has been measured. This avoids poorly suppressed harmonics on the first
    transmission after a band change from a higher to a lower band, e.g. 80m through the 20m filter. Later in the
