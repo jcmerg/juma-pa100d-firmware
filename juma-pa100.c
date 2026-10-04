@@ -581,7 +581,7 @@
  display screen is still displayed. It vanishes once the display page is changed. This update fixes this anomaly and now if the configuration is
  changed and saved the starting page is shown. A.Ryan - 5B4AIY - 26/AUG/2023
  ---------------------------------- DL4JC Modifications ----------------------------------
- Build 4-DL4JC	NOT AN OFFICIAL RELEASE. The EEPROM layout is unchanged, there is no checksum error on loading.
+ Build 4-DL4JC	The EEPROM layout is unchanged, there is no checksum error on loading.
  TX protection:
  - TX_ON is forced off in the User Configuration mode. Previously it stayed in the state it was in when the mode was entered.
  - The trap handlers now force TX_ON off and run the fan at high speed before anything else. (See safe_state() in traps.c)
@@ -612,6 +612,17 @@
 #define REMOTE_TEST		FALSE				// Used to verify the operation of the remote() function.
 #define LOOP_TIME		FALSE				// Used to measure loop cycle time.
 
+#ifdef __XC16__
+/*
+ Configuration bits for the MPLAB XC16 compiler, identical to the C30 settings below. XC16 names the 2V brown out
+ setting (BORV = 11) NONE. The settings not listed (code protection, boot and secure segments) remain unprogrammed,
+ i.e. off, as with CODE_PROT_OFF.
+*/
+#pragma config FOSFPR = XT_PLL4							// 7,3728MHz XT, 29,4912MHz clock = 7,3728MHz cycle. FCKSMEN is left
+														// unprogrammed (11), clock switching and monitor disabled, as with C30.
+#pragma config WDT = WDT_OFF								// Turn off the Watch-Dog Timer.
+#pragma config FPWRT = PWRT_64, BODENV = NONE, BOREN = PBOR_ON, MCLRE = MCLR_EN	// Enable MCLR, power-on timer, brown out 2V
+#else
 _FOSC(CSW_FSCM_OFF & XT_PLL4);				// 7,3728MHz XT, 29,4912MHz clock = 7,3728MHz cycle
 //_FOSC(CSW_FSCM_OFF & XT_PLL8);			// 3,68640MHz XT, 29,4912MHz clock = 7,3728MHz cycle
 _FWDT(WDT_OFF);                				// Turn off the Watch-Dog Timer.
@@ -620,6 +631,7 @@ _FBORPOR(MCLR_EN & PWRT_64 & BORV_20);   	// Enable MCLR, power-on timer, brown 
  _FBS(CODE_PROT_OFF);
  _FSS(CODE_PROT_OFF);
  _FGS(CODE_PROT_OFF);
+#endif
 
 // External Functions
 extern void us_delay(unsigned int);			// Delay routines
@@ -871,7 +883,7 @@ const char Yes_No[] = {"PWR:No BAND+:Yes"};
 const char firmware[] = {"\n\r%sD Firmware: %s Build: %s Date: %s\n\r"};
 const char copyright[] = {"Copyright: Juha Niinikoski - OH2NLT & Matti Hohtola - OH7SV\n\r"};
 const char additional_features[] = {"(Additional features and modifications - Adrian Ryan - 5B4AIY)\n\r"};
-const char dl4jc_features[] = {"(Modified build - DL4JC, not an official release)\n\r"};
+const char dl4jc_features[] = {"(Modified build - DL4JC)\n\r"};
 const char Rmt_Pwr_Off[] = {"Remote Power Off"};
 const char Data_Saved[] = {"   Data Saved"};
 
@@ -944,7 +956,7 @@ int sub_page1 = 0;				// LCD display sub page for lcd_mode1 - User Configuration
 int max_page = MAX_SUB_PAGE0;	// Set max_page to its normal value, it is increased by 1 if Auto Band Detect mode is set to F-SENSE
 int adjust_flag = TRUE;			// Calibration & Configuration adjustment flag
 
-unsigned char lcdpbuff[20];		// LCD print buffer. Maximum display length is 16 characters, this is a safety margin.
+char lcdpbuff[20];				// LCD print buffer. Maximum display length is 16 characters, this is a safety margin.
 
 // ADC & Meter Variables
 unsigned int AD_Values[6];		// A-D converter output values. (See definitions in juma-pa100.h for actual use of this array.)
@@ -1208,7 +1220,7 @@ void save_defval(void)
 		if(i < ((sizeof(struct defval) / 2) - 1)) Cfg_Checksum = crc_16(eeprom.storage[i], Cfg_Checksum);
 
  		EraseEE(EEPAGE, ((2 * i) + EEDEF), WORD);
-		WriteEE(&(eeprom.storage[i]), EEPAGE, ((2 * i) + EEDEF), WORD);	// EEPROM Address 8 high bits, address + physical EEPROM start 16 low bits
+		WriteEE((int *)&(eeprom.storage[i]), EEPAGE, ((2 * i) + EEDEF), WORD);	// EEPROM Address 8 high bits, address + physical EEPROM start 16 low bits
 		}
 	}
 
@@ -1220,7 +1232,7 @@ unsigned int read_defval(void)
 
 	for(i = 0; i < (sizeof(struct defval) / 2); i++)
 		{
-		ReadEE(EEPAGE, ((2 * i) + EEDEF), &(eeprom.storage[i]), WORD);	// EEPROM Address 8 high bits, address + physical EEPROM start 16 low bits
+		ReadEE(EEPAGE, ((2 * i) + EEDEF), (int *)&(eeprom.storage[i]), WORD);	// EEPROM Address 8 high bits, address + physical EEPROM start 16 low bits
 
 		if(i < ((sizeof(struct defval) / 2) - 1)) checksum = crc_16(eeprom.storage[i], checksum);
 		}
@@ -1242,7 +1254,7 @@ void save_calval(void)
 		if(i < ((sizeof(struct calval) / 2) - 1)) Cal_Checksum = crc_16(cal.ee[i], Cal_Checksum);
 
 		EraseEE(EEPAGE, ((2 * i) + EECAL), WORD);
-		WriteEE(&(cal.ee[i]), EEPAGE, ((2 * i) + EECAL), WORD);	// EEPROM Address 8 high bits, address + physical EEPROM start 16 low bits
+		WriteEE((int *)&(cal.ee[i]), EEPAGE, ((2 * i) + EECAL), WORD);	// EEPROM Address 8 high bits, address + physical EEPROM start 16 low bits
 		}
 	}
 
@@ -1254,7 +1266,7 @@ unsigned int read_calval(void)
 
 	for(i = 0; i < (sizeof(struct calval) / 2); i++)
 		{
-		ReadEE(EEPAGE, ((2 * i) + EECAL), &(cal.ee[i]), WORD);	// EEPROM Address 8 high bits, address + physical EEPROM start 16 low bits
+		ReadEE(EEPAGE, ((2 * i) + EECAL), (int *)&(cal.ee[i]), WORD);	// EEPROM Address 8 high bits, address + physical EEPROM start 16 low bits
 
 		if(i < ((sizeof(struct calval) / 2) - 1)) checksum = crc_16(cal.ee[i], checksum);
 		}
@@ -1480,7 +1492,7 @@ void serial_kx3(void)				// Serial Data Handler
 				if(Poll_Time)
 					poll_resp_rec = TRUE;			// If polling is enabled, set the poll response received flag.
 
-				freq = (atol(cmd_buf + 2) + 500L) / 1000L;	// Convert to nearest kHz
+				freq = (atol((char *)cmd_buf + 2) + 500L) / 1000L;	// Convert to nearest kHz
 
 				if(freq > 30000L)					// Check limit before the cast to unsigned int, otherwise e.g. 144MHz
 					freq = 30002L;					// would wrap to 12.9MHz and select the 20m filter.

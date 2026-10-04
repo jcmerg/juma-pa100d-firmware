@@ -42,7 +42,7 @@ extern int alarms;
 extern int last_man_band;
 extern int pa_state;
 
-extern unsigned char lcdpbuff[];	// LCD print buffer
+extern char lcdpbuff[];	// LCD print buffer
 
 extern const char firmware[];
 extern const char copyright[];
@@ -136,7 +136,7 @@ void dump_eeprom(void)
 
 	for(i = 0; i < 256; i += 2)					// Byte address for EEPROM, but data is stored in words
 		{
-		ReadEE(EEPAGE, (i + EEDEF), &w, WORD);	// EEPROM Address 8 high bits, address + physical EEPROM start 16 low bits
+		ReadEE(EEPAGE, (i + EEDEF), (int *)&w, WORD);	// EEPROM Address 8 high bits, address + physical EEPROM start 16 low bits
 
 		if((i % 16) == 0) printf("\n\r%4.4X:", i);
 

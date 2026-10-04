@@ -107,7 +107,7 @@ void serial_pa100(void)
 				if(c == 0x0D)				// If fourth/fifth character is end-of-message byte,
 					{
 					cmd_buf[cmd_buf_idx] = c;			// terminate the buffer,
-					Current_Band = atoi(cmd_buf + 2);	// and get the new band,
+					Current_Band = atoi((char *)cmd_buf + 2);	// and get the new band,
 
 					if(Current_Band < MIN_BAND || Current_Band > MAX_BAND) Current_Band = NOT_KNOWN;	// check the new band for validity, an invalid band inhibits TX,
 

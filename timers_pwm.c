@@ -181,7 +181,7 @@ void init_timers_pwm(void)
 	}
 
 // Tone generator, TMR2
-void __attribute__((interrupt)) _T2Interrupt(void)
+void __attribute__((interrupt, auto_psv)) _T2Interrupt(void)
 	{
 	switch(last_cycle)				// Tone generator state machine
 		{
@@ -320,7 +320,7 @@ void beep(int tone, int duration)
 */
 // IRQ code
 // 1ms Tick timer
-void __attribute__((interrupt)) _T3Interrupt(void)
+void __attribute__((interrupt, auto_psv)) _T3Interrupt(void)
 	{
 	int i = 0;
 

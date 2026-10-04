@@ -78,7 +78,7 @@ const unsigned int baud_rates[] = {			// Divisor = (7,3728,000 / (Baud Rate * 16
 
 // UART1 IRQ service
 // Queue character
-void __attribute__((interrupt)) _U1RXInterrupt(void)	// Put received character to RX queue
+void __attribute__((interrupt, auto_psv)) _U1RXInterrupt(void)	// Put received character to RX queue
 	{
   	unsigned char rx;
 

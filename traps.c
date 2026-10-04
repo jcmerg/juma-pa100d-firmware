@@ -62,7 +62,7 @@ void lcd_error_message(int err)		// Moved to here to avoid forward references - 
 		}
 	}
 
-void __attribute__ ((interrupt)) _OscillatorFail(void)
+void __attribute__((interrupt, auto_psv)) _OscillatorFail(void)
 	{
 	int x;
 
@@ -81,7 +81,7 @@ void __attribute__ ((interrupt)) _OscillatorFail(void)
 	for(;;);
 	}
 
-void __attribute__ ((interrupt)) _AddressError(void)
+void __attribute__((interrupt, auto_psv)) _AddressError(void)
 	{
 
 //	DI();
@@ -127,7 +127,7 @@ void __attribute__ ((interrupt)) _AddressError(void)
 	for(;;);
 	}
 
-void __attribute__ ((interrupt)) _StackError(void)
+void __attribute__((interrupt, auto_psv)) _StackError(void)
 	{
 //	DI();
 	asm("mov w15, _w15");
@@ -141,7 +141,7 @@ void __attribute__ ((interrupt)) _StackError(void)
 	for(;;);
 	}
 
-void __attribute__ ((interrupt)) _MathError(void)
+void __attribute__((interrupt, auto_psv)) _MathError(void)
 	{
 	safe_state();
 //	DI();
@@ -151,7 +151,7 @@ void __attribute__ ((interrupt)) _MathError(void)
 	for(;;);
 	}
 
-void __attribute__ ((interrupt)) _DefaultInterrupt(void)
+void __attribute__((interrupt, auto_psv)) _DefaultInterrupt(void)
 	{
 	safe_state();
 	_INT4IE = 0;

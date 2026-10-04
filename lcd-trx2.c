@@ -43,7 +43,7 @@ extern void us_delay(unsigned int);
 extern void ms_delay(unsigned int);
 
 // External Data
-extern unsigned char lcdpbuff[];		// General purpose LCD display buffer
+extern char lcdpbuff[];		// General purpose LCD display buffer
 
 // Local Data
 const char init_lcd[] = {				// Indexed by: local variable i in initlcd() function

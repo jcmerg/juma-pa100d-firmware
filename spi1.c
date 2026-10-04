@@ -69,7 +69,7 @@ void exchg_data_spi1(unsigned int data)
 	}
 
 // TX ready, generate latch pulse
-void __attribute__((interrupt)) _SPI1Interrupt(void)
+void __attribute__((interrupt, auto_psv)) _SPI1Interrupt(void)
 	{
 	unsigned int spi_rx_data;
 
