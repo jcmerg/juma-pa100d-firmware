@@ -382,8 +382,6 @@ nicht getestet.
   Millisekunden mit schlecht unterdrückten Oberwellen (die Frequenz lässt sich erst messen, wenn HF
   anliegt). Wem das wichtig ist: Einstellung auf **Off** lassen oder nach einem Bandwechsel zuerst
   kurz mit kleiner Leistung tasten.
-- **HR50-Modus** ist gegen den Quellcode der HR50-Firmware geprüft, aber noch nicht mit jedem
-  Programm, das die HR50 unterstützt. Rückmeldungen mit Programmname sind willkommen.
 - **Fernsteuerung mit Polling:** Wie in v4.01a läuft der Remote-Timeout bei eingeschaltetem Polling
   nie ab, weil jede automatische Statusmeldung ihn neu startet. Ein ausgefallener Remote-Host wird
   deshalb nicht erkannt. Das ist bewusst so belassen, damit bestehende Fernsteuer-Programme weiter

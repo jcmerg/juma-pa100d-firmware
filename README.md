@@ -377,8 +377,6 @@ this version.
 - **Remote with polling:** as in v4.01a, the remote time-out never expires while polling is
   enabled, because every automatic status message restarts it. A failed remote host is therefore
   not detected. This is kept deliberately for compatibility with existing remote programs.
-- **HR50 mode** has been checked against the HR50 firmware source, not yet with every program that
-  supports the HR50. Feedback with the program name is welcome.
 - **USB-serial adapters** split lines according to their latency timer (FTDI: 16 ms). Remote
   programs should join lines up to `\n\r`. On Windows the *latency timer* can be set to 1 ms
   (Device Manager → COM port → Advanced).
