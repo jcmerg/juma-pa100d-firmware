@@ -305,7 +305,7 @@ niedrigere Baudrate versuchen.
 
 [`tools/juma-flash.py`](tools/juma-flash.py) ist ein Kommandozeilen-Loader, geschrieben nach dem
 Bootloader-Quelltext `bootloader/iBL.s`. Er sollte auch mit anderen JUMA-Geräten mit Ingenia-Bootloader
-funktionieren (z. B. TRX-2), getestet ist er aber nur mit der PA-100D. Er ersetzt die Schritte 3 und 4 und braucht weder Ingenia
+funktionieren (z. B. TRX-2), getestet ist er aber nur mit der PA-100D (Rowaves) und dem RS-928, unter Windows und macOS. Er ersetzt die Schritte 3 und 4 und braucht weder Ingenia
 noch die Gerätedatei oder Administratorrechte. Voraussetzung: Python 3 und pyserial
 (`pip install pyserial`). Kabel und Prüfung der seriellen Schnittstelle (Schritte 1 und 2) bleiben gleich.
 

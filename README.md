@@ -297,7 +297,7 @@ try a lower baud rate.
 
 [`tools/juma-flash.py`](tools/juma-flash.py) is a command-line loader written from the boot loader
 source `bootloader/iBL.s`. It should also work with other JUMA devices that use the Ingenia boot loader (e.g. TRX-2),
-but has only been tested with the PA-100D. It replaces steps 3 and 4 and does not need Ingenia, the device file or
+but has been tested with the PA-100D (Rowaves) and the RS-928 only, on Windows and macOS. It replaces steps 3 and 4 and does not need Ingenia, the device file or
 administrator rights. Requirements: Python 3 and pyserial (`pip install pyserial`). Cable and the
 serial port check (steps 1 and 2) are the same.
 

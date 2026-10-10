@@ -20,7 +20,8 @@ never touched. The boot loader address is taken from the reset vector of the dev
 only runs because the reset vector points to it. Everything from this address up is never written,
 and the reset vector in the firmware is replaced by the one of the device, so that the boot loader
 stays reachable. The firmware is started by the boot loader through the GOTO __reset at 0x100, see
-juma-trx2.gld. Only tested with the PA-100D (boot loader at 0x17D00). DL4JC
+juma-trx2.gld. Tested with the JUMA PA-100D (Rowaves) and the RS-928 clone (boot loader at 0x17D00), on Windows
+and macOS. DL4JC
 """
 
 import argparse
