@@ -169,9 +169,10 @@ class Loader:
         answered = False
         end = time.monotonic() + wait
         while time.monotonic() < end:
-            self.ser.write(bytes([ACK]) * 32)
+            # Without pauses: the boot loader only waits a short time for the first edges (approx. 1 s in iBL.s, possibly
+            # less in other builds) and then starts the firmware. A pause between the bursts could fall into this time.
+            self.ser.write(bytes([ACK]) * 16)
             self.ser.flush()
-            time.sleep(0.05)
             if not self.ser.in_waiting:
                 continue
             # Something answered. It may also be the running firmware, e.g. in the serial test mode, so only
