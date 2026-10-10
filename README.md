@@ -164,7 +164,7 @@ Speed* to the speed of the host (the HR50 USB port defaults to 19200).
 | `HRMDn;` / `HRMD;` | 1 = PTT (Operate), 0 = OFF (Standby). 2 (COR) and 3 (QRP) select Standby. |
 | `HRRX;` | Status, e.g. `RX,PTT,20M,27C,13.8V;` |
 | `HRTP;` / `HRVT;` | Temperature `HRTP27C;` / supply voltage `HRVT13.8V;` |
-| `HRAT;` / `HRKX;` / `HRBR;` | `HRAT0;` (no ATU) / `HRKX0;` / serial speed 0–3 (4800–38400) |
+| `HRAT;` / `HRKX;` / `HRBR;` | `HRAT0;` (no ATU) / `HRKX0;` / serial speed 0–3 (4800–38400); below 4800 the answer is 0, above 38400 (57600, 115200) it is 3 – the HR50 protocol knows no higher speeds |
 | `HRTM…;` | ATU pass-through, answered with `HRTM;` as by an HR50 without ATU |
 
 - Commands end with `;`, upper or lower case. Replies end with `;\r\n`. As with the HR50, SET

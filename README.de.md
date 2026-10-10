@@ -166,7 +166,7 @@ auf die Geschwindigkeit des Hosts stellen (der USB-Port der HR50 steht ab Werk a
 | `HRMDn;` / `HRMD;` | 1 = PTT (Oper), 0 = OFF (Standby). 2 (COR) und 3 (QRP) schalten auf Standby. |
 | `HRRX;` | Status, z. B. `RX,PTT,20M,27C,13.8V;` |
 | `HRTP;` / `HRVT;` | Temperatur `HRTP27C;` / Versorgungsspannung `HRVT13.8V;` |
-| `HRAT;` / `HRKX;` / `HRBR;` | `HRAT0;` (kein ATU) / `HRKX0;` / serielle Geschwindigkeit 0–3 (4800–38400) |
+| `HRAT;` / `HRKX;` / `HRBR;` | `HRAT0;` (kein ATU) / `HRKX0;` / serielle Geschwindigkeit 0–3 (4800–38400); unter 4800 lautet die Antwort 0, über 38400 (57600, 115200) 3 – das HR50-Protokoll kennt keine höheren Geschwindigkeiten |
 | `HRTM…;` | ATU-Durchreichung, Antwort `HRTM;` wie bei einer HR50 ohne ATU |
 
 - Befehle enden mit `;`, Groß- oder Kleinschreibung. Antworten enden mit `;\r\n`. Wie bei der HR50
