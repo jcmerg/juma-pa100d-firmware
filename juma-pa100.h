@@ -6,7 +6,7 @@
 #include <p30F6014A.h>
 
 // Version Data
-#define VERSION				"v5.00"			// One version number per release, shown on the start-up screen (max. 6 characters)
+#define VERSION				"v5.01"			// One version number per release, shown on the start-up screen (max. 6 characters)
 #define BUILD_DATE			"10/OCT/2026"
 
 // Macro Definitions

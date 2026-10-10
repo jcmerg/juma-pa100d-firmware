@@ -1,4 +1,4 @@
-# JUMA PA-100D Firmware – v5.00 (DL4JC)
+# JUMA PA-100D Firmware – v5.01 (DL4JC)
 
 Deutsch | [English](README.md)
 
@@ -38,7 +38,7 @@ die Einstellung **Beep Tone** für den RS-928 und die Möglichkeit, mit dem aktu
 
 ---
 
-**Bedienungsanleitung:** [Deutsch (PDF)](docs/manual/JUMA%20PA-100D%20Bedienungsanleitung%20v5.00.pdf) · [Englisch (PDF)](docs/manual/JUMA%20PA-100D%20Operating%20Manual%20v5.00.pdf) – vollständige Bedienung, Einrichtung und Kalibrierung mit v5.00.
+**Bedienungsanleitung:** [Deutsch (PDF)](docs/manual/JUMA%20PA-100D%20Bedienungsanleitung%20v5.01.pdf) · [Englisch (PDF)](docs/manual/JUMA%20PA-100D%20Operating%20Manual%20v5.01.pdf) – vollständige Bedienung, Einrichtung und Kalibrierung mit v5.01.
 
 ## Neuerungen
 
@@ -95,7 +95,7 @@ die Einstellung **Beep Tone** für den RS-928 und die Möglichkeit, mit dem aktu
 - Linker-Skript: Der Programmspeicher endet **unterhalb des Bootloaders** (0x17D00). Das Build-Skript erzeugt keine HEX-Datei, die Daten im Bootloader-Bereich enthält.
 - **EEPROM-Erweiterungsblock** für die neuen Einstellungen, siehe [EEPROM](#eeprom-und-kompatibilität).
 - Service-Menü **Beep Tone**: Töne im sauberen Bereich des RS-928-Summers, siehe [Beep Tone](#beep-tone-service-menü).
-- Startbildschirm: `JUMA PA-100D` / `Firmware v5.00`. Die Credits stehen auf der neuen User-Config-Seite
+- Startbildschirm: `JUMA PA-100D` / `Firmware v5.01`. Die Credits stehen auf der neuen User-Config-Seite
   **„About“** (letzte Seite, mit UP/DOWN blättern). Jedes Release hat eine eigene Versionsnummer; eine
   getrennte Build-Nummer gibt es nicht mehr. (Die Test-Builds vor v4.03 hießen v4.02a Build 1–5-DL4JC.)
 
@@ -286,7 +286,7 @@ ein Programmer (siehe [Wiederherstellung](#wiederherstellung-mit-programmer)).
    stammt aus der Zeit vor der Selbsthaltung, die der Bootloader seit 23.01.2007 hat, siehe `iBL.s` /
    `mini_lcd-trx2.c`.)
 5. Warten, bis *dsPIC6014A detected, firmware version 1.1* erscheint → OK.
-6. *open HEX file* → `firmware/Juma PA-100D v5.00.hex` wählen (liegt auch dem
+6. *open HEX file* → `firmware/Juma PA-100D v5.01.hex` wählen (liegt auch dem
    [neuesten Release](https://github.com/jcmerg/juma-pa100d-firmware/releases/latest) bei).
 7. Nur **„program flash“** darf angehakt sein. **„write data EEPROM“ und „configure registers“ dürfen
    nicht angehakt sein.** Es darf keine Fehlermeldung erscheinen (siehe unten).
@@ -310,7 +310,7 @@ noch die Gerätedatei oder Administratorrechte. Voraussetzung: Python 3 und pyse
 (`pip install pyserial`). Kabel und Prüfung der seriellen Schnittstelle (Schritte 1 und 2) bleiben gleich.
 
 ```
-python3 tools/juma-flash.py --port COM3 "firmware/Juma PA-100D v5.00.hex"
+python3 tools/juma-flash.py --port COM3 "firmware/Juma PA-100D v5.01.hex"
 ```
 
 (macOS/Linux: z. B. `--port /dev/cu.usbserial-XXXX` oder `/dev/ttyUSB0`; ohne `--port` werden die
@@ -453,12 +453,12 @@ nicht getestet.
 | `juma-pa100.h`, `pa100_eeprom.h` | Hardware-Definitionen, EEPROM-Strukturen |
 | `juma-trx2.gld` | Linker-Skript für den Ingenia-Bootloader |
 | `build-xc16.sh` | Build-Skript für XC16 |
-| `firmware/Juma PA-100D v5.00.hex` | Aktuelle Version |
+| `firmware/Juma PA-100D v5.01.hex` | Aktuelle Version |
 | `firmware/Juma PA-100D v4.01a Build 3 (original).hex` | Original v4.01a Build 3 (zum Zurückgehen) |
 | `tools/ingenia/ibl_dspiclist.xml` | Gerätedatei für den Ingenia-Loader |
 | `tools/juma-flash.py` | Serieller Firmware-Loader (Alternative zu Ingenia) |
 | `bootloader/` | Bootloader-Quellcode und HEX; `Bootldr_Juma-PA100_v104.hex` = komplettes Abbild für die Erstinstallation per Programmer (RS-928) |
-| `docs/manual/` | **Bedienungsanleitung v5.00** (PDF, Deutsch und Englisch) mit Markdown-Quellen; `build-manual.py` erzeugt die PDFs (pandoc, weasyprint) |
+| `docs/manual/` | **Bedienungsanleitung v5.01** (PDF, Deutsch und Englisch) mit Markdown-Quellen; `build-manual.py` erzeugt die PDFs (pandoc, weasyprint) |
 | `docs/` | Notizen aus der Original-Firmware (5B4AIY): Build-Protokoll, EEPROM-Einstellungen, Beispielausgaben der seriellen Schnittstelle |
 | `Juma PA-100D.mcp/.mcw/.mcs` | Originales MPLAB-8-Projekt |
 

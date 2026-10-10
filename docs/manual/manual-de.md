@@ -2,7 +2,7 @@
 
 <p class="title">JUMA PA-100D<br>Bedienungsanleitung</p>
 
-<p class="sub">Firmware v5.00 (DL4JC) · Oktober 2026</p>
+<p class="sub">Firmware v5.01 (DL4JC) · Oktober 2026</p>
 
 <p class="based">Auf Grundlage der Bedienungsanleitung zur Firmware v4.00a von Adrian Ryan, 5B4AIY
 (Revision 15-DEC-2021). Ursprüngliche Firmware von Juha Niinikoski, OH2NLT, und Matti Hohtola,
@@ -25,7 +25,7 @@ jederzeit zur originalen v4.01a zurückkehren, ohne die Kalibrierung zu verliere
 Die PA-100D ist eine 100-W-Allband-Endstufe (160–10 m). Sie wurde als Partner des JUMA TRX-2
 entwickelt, lässt sich aber mit fast jedem QRP-Transceiver betreiben (Elecraft KX2/KX3, Yaesu
 FT-817/818, Xiegu, Icom IC-705 und andere). Diese Anleitung beschreibt Bedienung und Einrichtung mit
-der **Firmware v5.00**. Sie läuft auf der JUMA PA-100D und auf dem RS-928-Clone.
+der **Firmware v5.01**. Sie läuft auf der JUMA PA-100D und auf dem RS-928-Clone.
 
 ## 1.1 Versionsnummern
 
@@ -81,7 +81,7 @@ länger. Die Kurzreferenz in Kapitel 11 fasst alle Funktionen zusammen.
 - **Einschalten:** PWR kurz drücken. Der Startbildschirm erscheint (wenn *Splash Screen* an ist):
 
   <pre class="lcd">  JUMA PA-100D
-Firmware   v5.00</pre>
+Firmware   v5.01</pre>
 
   Die Endstufe startet immer in **Standby**.
 - **Ausschalten:** PWR halten. Wurde seit dem letzten Speichern ein Gain, das Band (Manual) oder
@@ -325,7 +325,7 @@ Die letzte Seite. Firmware-Version und Credits; mit UP/DOWN blättern:
 
 | Zeile | |
 |---|---|
-| `Firmware   v5.00` | Installierte Firmware-Version |
+| `Firmware   v5.01` | Installierte Firmware-Version |
 | `OH2NLT  Original` | Juha Niinikoski – ursprüngliche Firmware |
 | `OH7SV       JUMA` | Matti Hohtola – JUMA |
 | `5B4AIY  to 4.01a` | Adrian Ryan – Erweiterungen und Pflege bis v4.01a |
@@ -391,7 +391,7 @@ sie zu niedrig.
 Aus dem ausgeschalteten Zustand **PWR** halten, bis ein Ton kommt und
 
 <pre class="lcd">  Calibration
-  Mode  v5.00</pre>
+  Mode  v5.01</pre>
 
 erscheint. PWR loslassen. Seiten: DISPLAY kurz/halten vorwärts, PWR kurz/halten rückwärts. Werte:
 UP/DOWN. **OPER** öffnet die Speichern-Abfrage (BAND+ speichert, PWR stellt die vorherige
@@ -673,9 +673,9 @@ Anleitung: README im Repository (github.com/jcmerg/juma-pa100d-firmware).
 1. Zuerst die serielle Verbindung prüfen: *Serial Speed* 115200, *Serial Port* Test, mehrmals `H` und
    `F` eingeben – die Ausgabe muss fehlerfrei sein. Die Ausgabe von `E` aufbewahren.
 2. Ausschalten. **OPER halten und PWR drücken**: Der Bootloader startet.
-3. `firmware/Juma PA-100D v5.00.hex` laden – nur den Programmspeicher, **niemals** das Daten-EEPROM oder
+3. `firmware/Juma PA-100D v5.01.hex` laden – nur den Programmspeicher, **niemals** das Daten-EEPROM oder
    die Konfigurationsregister. Mit `juma-flash.py`:
-   `python3 tools/juma-flash.py --port COM3 "firmware/Juma PA-100D v5.00.hex"`
+   `python3 tools/juma-flash.py --port COM3 "firmware/Juma PA-100D v5.01.hex"`
 4. Stromversorgung trennen (PWR funktioniert im Bootloader nicht), dann normal einschalten.
 
 **EEPROM:** Die originalen Konfigurations- und Kalibrierblöcke sind unverändert – kein

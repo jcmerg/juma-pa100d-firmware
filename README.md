@@ -1,4 +1,4 @@
-# JUMA PA-100D Firmware – v5.00 (DL4JC)
+# JUMA PA-100D Firmware – v5.01 (DL4JC)
 
 [Deutsch](README.de.md) | English
 
@@ -37,7 +37,7 @@ work without the Windows Ingenia loader, with [`juma-flash.py`](#alternative-jum
 
 ---
 
-**Operating manual:** [English (PDF)](docs/manual/JUMA%20PA-100D%20Operating%20Manual%20v5.00.pdf) · [German (PDF)](docs/manual/JUMA%20PA-100D%20Bedienungsanleitung%20v5.00.pdf) – complete operation, setup and calibration with v5.00.
+**Operating manual:** [English (PDF)](docs/manual/JUMA%20PA-100D%20Operating%20Manual%20v5.01.pdf) · [German (PDF)](docs/manual/JUMA%20PA-100D%20Bedienungsanleitung%20v5.01.pdf) – complete operation, setup and calibration with v5.01.
 
 ## What's new
 
@@ -94,7 +94,7 @@ work without the Windows Ingenia loader, with [`juma-flash.py`](#alternative-jum
 - Linker script: program memory ends **below the boot loader** (0x17D00). The build script refuses to produce a HEX file containing data in the boot loader area.
 - **EEPROM extension block** for the new settings, see [EEPROM](#eeprom-and-compatibility).
 - Service menu **Beep Tone**: tones in the clean range of the RS-928 buzzer, see [Beep Tone](#beep-tone-service-menu).
-- Start-up screen: `JUMA PA-100D` / `Firmware v5.00`. The credits are on the new user configuration
+- Start-up screen: `JUMA PA-100D` / `Firmware v5.01`. The credits are on the new user configuration
   page **"About"** (the last page, UP/DOWN scrolls). Every release has its own version number; there
   is no separate build number any more. (The test builds before v4.03 were called v4.02a Build
   1–5-DL4JC.)
@@ -278,7 +278,7 @@ programmer (see [Recovery](#recovery-with-a-programmer)).
    (The note "keep PWR pressed" in the old TRX-2 instructions predates the power latch, which the
    boot loader has had since 23.01.2007, see `iBL.s` / `mini_lcd-trx2.c`.)
 5. Wait until *dsPIC6014A detected, firmware version 1.1* appears → OK.
-6. *open HEX file* → select `firmware/Juma PA-100D v5.00.hex` (also attached to the
+6. *open HEX file* → select `firmware/Juma PA-100D v5.01.hex` (also attached to the
    [latest release](https://github.com/jcmerg/juma-pa100d-firmware/releases/latest)).
 7. Only **"program flash"** may be ticked. **"write data EEPROM" and "configure registers" must not
    be ticked.** There must be no error message (see below).
@@ -302,7 +302,7 @@ administrator rights. Requirements: Python 3 and pyserial (`pip install pyserial
 serial port check (steps 1 and 2) are the same.
 
 ```
-python3 tools/juma-flash.py --port COM3 "firmware/Juma PA-100D v5.00.hex"
+python3 tools/juma-flash.py --port COM3 "firmware/Juma PA-100D v5.01.hex"
 ```
 
 (macOS/Linux: e.g. `--port /dev/cu.usbserial-XXXX` or `/dev/ttyUSB0`; without `--port` the available
@@ -443,12 +443,12 @@ this version.
 | `juma-pa100.h`, `pa100_eeprom.h` | Hardware definitions, EEPROM structures |
 | `juma-trx2.gld` | Linker script for the Ingenia boot loader |
 | `build-xc16.sh` | Build script for XC16 |
-| `firmware/Juma PA-100D v5.00.hex` | Current version |
+| `firmware/Juma PA-100D v5.01.hex` | Current version |
 | `firmware/Juma PA-100D v4.01a Build 3 (original).hex` | Original v4.01a Build 3 (to go back) |
 | `tools/ingenia/ibl_dspiclist.xml` | Device file for the Ingenia loader |
 | `tools/juma-flash.py` | Serial firmware loader (alternative to Ingenia) |
 | `bootloader/` | Boot loader source and HEX; `Bootldr_Juma-PA100_v104.hex` = complete image for a first installation with a programmer (RS-928) |
-| `docs/manual/` | **Operating manual v5.00** (PDF, English and German) with Markdown sources; `build-manual.py` builds the PDFs (pandoc, weasyprint) |
+| `docs/manual/` | **Operating manual v5.01** (PDF, English and German) with Markdown sources; `build-manual.py` builds the PDFs (pandoc, weasyprint) |
 | `docs/` | Notes from the original firmware (5B4AIY): build record, EEPROM settings, example outputs of the serial port |
 | `Juma PA-100D.mcp/.mcw/.mcs` | Original MPLAB 8 project |
 

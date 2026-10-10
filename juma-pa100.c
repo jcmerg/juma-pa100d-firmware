@@ -697,6 +697,10 @@
  - FA frequencies with 8 digits (Yaesu FT-450/950/2000, FTDX1200/3000/5000) are accepted as well as 9 and 11.
  - main() uses apply_cfg() for the configuration dependent run-time state; prototypes of save_settings() and
    save_defval() in service.c and serial_test.c corrected.
+ v5.01 - DL4JC - 10/OCT/2026
+ - Serial test 'E': the Beep Tone service setting (extension block) is listed with the calibration settings, so that the
+   dump is a complete record before a firmware update.
+ - Serial test header: "(Modifications from v4.03 - DL4JC)" instead of "(Modified build - DL4JC)".
 */
 
 #include <stdio.h>
@@ -992,7 +996,7 @@ const char Yes_No[] = {"PWR:No BAND+:Yes"};
 const char firmware[] = {"\n\r%sD Firmware: %s Date: %s\n\r"};
 const char copyright[] = {"Copyright: Juha Niinikoski - OH2NLT & Matti Hohtola - OH7SV\n\r"};
 const char additional_features[] = {"(Additional features and modifications - Adrian Ryan - 5B4AIY)\n\r"};
-const char dl4jc_features[] = {"(Modified build - DL4JC)\n\r"};
+const char dl4jc_features[] = {"(Modifications from v4.03 - DL4JC)\n\r"};
 const char Rmt_Pwr_Off[] = {"Remote Power Off"};
 const char Data_Saved[] = {"   Data Saved"};
 

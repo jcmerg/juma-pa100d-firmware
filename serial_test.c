@@ -422,6 +422,8 @@ void serial_test(void)
 					? printf("%-d mS\n\r", cal.calval.beep_len)
 					: printf("OFF\n\r");
 
+				printf("Beep Tone              : %s\n\r", Beep_Tone ? "RS-928" : "JUMA");	// Extension block. DL4JC
+
 				printf("PWR Measurement Samples: ");
 				(cal.calval.samples == SAMPLE_MIN) ? printf("1 (Off)\n\r") : printf("%d\n\r", cal.calval.samples);
 
