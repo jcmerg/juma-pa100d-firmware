@@ -24,7 +24,7 @@ extern void set_relays(void);					// Set gain & filter relays
 extern void analog_measurements(void);			// Do analog measurements
 extern void fan_control(void);					// Cooling fan control
 extern int convert_adc12(unsigned int);			// Added - 5B4AIY
-extern int save_settings(int, int);				// Added - 5B4AIY
+extern void save_settings(int, int);				// Added - 5B4AIY
 extern void set_value(int, int *, int, int);	// Added - 5B4AIY
 extern void get_one_zero(int *);
 extern void eval_band(void);					// Frequency Sense function

@@ -1,4 +1,4 @@
-# JUMA PA-100D Firmware – v4.05 (DL4JC)
+# JUMA PA-100D Firmware – v5.00 (DL4JC)
 
 [Deutsch](README.de.md) | English
 
@@ -17,6 +17,9 @@ work without the Windows Ingenia loader, with [`juma-flash.py`](#alternative-jum
 > is not from JUMA may void the manufacturer's warranty and support. Test every new build with a
 > dummy load and low power first. You can return to the original v4.01a at any time, see
 > [Going back to the original firmware](#going-back-to-the-original-firmware).
+>
+> **Version numbers:** some dealers list the original firmware v4.01a as **"4.1a"**. That is the
+> original, not a newer version. This firmware starts at v5.00 so that the two cannot be confused.
 
 ---
 
@@ -34,6 +37,8 @@ work without the Windows Ingenia loader, with [`juma-flash.py`](#alternative-jum
 
 ---
 
+**Operating manual:** [English (PDF)](docs/manual/JUMA%20PA-100D%20Operating%20Manual%20v5.00.pdf) · [German (PDF)](docs/manual/JUMA%20PA-100D%20Bedienungsanleitung%20v5.00.pdf) – complete operation, setup and calibration with v5.00.
+
 ## What's new
 
 ### TX protection
@@ -44,19 +49,23 @@ work without the Windows Ingenia loader, with [`juma-flash.py`](#alternative-jum
 | **KEY release** | RF off 2 ms after KEY becomes inactive, wherever the main loop is. |
 | **SWR in the interrupt** | The A-D conversions now run in the 1 ms interrupt. The SWR is averaged over *Power Averaging* × 4 ms (at least 8 ms) and tested 20 ms after TX starts, which gives fast and reliable shutdown without nuisance trips. |
 | **Main loop watchdog** | RF off if the main loop has not run for 2 s. |
+| **Over-current in the interrupt** | The over-current latch of the PA board is read every millisecond and turns RF off at once, also while the main loop waits (e.g. at a save prompt). |
 | **User configuration mode** | TX_ON is forced off. In v4.01a it stayed in the state it had when the menu was entered. |
 | **Trap handlers** | On a processor fault (address, stack or math trap) the RF is turned off and the fan is switched on before anything else. |
 | **Service mode** | An alarm now really exits the service mode. In v4.01a the device hung in the loop. |
 | **Port register** | The timing test pin is toggled with a single bit instruction. Previously the main loop rewrote the whole port register, which could switch RF on again for up to 1 ms just after the protection had switched it off. |
+| **Power off** | RF is turned off before the save prompt, the EEPROM write and the fans, also with the remote command `=P`. |
+| **Fan hysteresis** | The fan stops 2 °C/4 °F below the cut-in temperature. The hysteresis documented since v1.05 was never applied, so the fan twitched at the cut-in temperature. |
 
 ### Low-pass filter protection (band change)
 
 | Change | Effect |
 |---|---|
 | **No relay switching under power** | On a band change RF is turned off first. The filter relays switch no earlier than 20 ms after RF off, once the PA relays have released (also when the protection switched RF off), and TX is held off for 20 ms until the relays have settled. |
+| **Gain relays** | A gain change while transmitting (UP/DOWN, remote `=G`) is applied after the transmission, the attenuator relays no longer switch under drive power. |
 | **Frequency above the filter** | If the input frequency measured by F-Sense is above the selected filter for 2 ms, RF goes off until the band has been corrected. This fixes the **O/C alarm** of v4.01a on the first transmission after a band change in F-Sense mode, e.g. 40 m → 20 m, which happened because 20 m was amplified through the 40 m filter. Works in every band select mode. |
 | **Frequency below the filter** (F-Sense) | In the first 200 ms of a transmission: 3 ms below the selected filter means RF off until the band has been measured (e.g. 80 m through the 20 m filter, poor harmonic suppression). The test ends with the first measurement, so that modulated signals do not make the relays chatter. |
-| **Lower band only from a clean carrier** (F-Sense) | F-Sense counts modulated signals (two-tone, noise, SSB) too low, e.g. 14 MHz two-tone as approx. 11 MHz. v4.01a then selected the 30 m filter at the start of the transmission. A lower band is now only selected when all samples lie within approx. 3 % (TUNE, CW), or when even the highest sample is far below the current filter (e.g. 20 m → 40 m with SSB); a higher band is still selected from any signal. |
+| **Lower band only from a clean carrier** (F-Sense) | F-Sense counts modulated signals (two-tone, noise, SSB) too low, e.g. 14 MHz two-tone as approx. 11 MHz. v4.01a then selected the 30 m filter at the start of the transmission. A lower band is now only selected when all samples lie within approx. 3 % (TUNE, CW), or when even the highest sample + 20 % is below the current filter (e.g. 20 m → 40 m with SSB); the band is then the highest amateur band between the highest sample and + 20 %, never below the transmitted frequency. Once the band has been measured in a transmission, it is only increased. A higher band is still selected from any signal. |
 | **F-Sense QSK switch** | New menu page, see [below](#f-sense-qsk). |
 
 ### Band select
@@ -75,7 +84,9 @@ work without the Windows Ingenia loader, with [`juma-flash.py`](#alternative-jum
 |---|---|
 | **Receive overrun** | The receive interrupt now reads the whole UART FIFO and an overrun is cleared automatically. In v4.01a reception could stop for good at higher baud rates (e.g. 115200) after a short burst, while transmission carried on. |
 | **Status line in one piece** | The status reply (`=R` / polling) is formatted completely and then sent in one go. Previously gaps between the fields could split the line, and JUMA_CTRL then showed `???`. The format is unchanged. |
-| **KX2/KX3 time-out** | An incomplete `FA` message is discarded after the time-out. In v4.01a the time-out never applied, and a partial message could be mixed with the next one. |
+| **KX2/KX3 partial messages** | An incomplete `FA` message is discarded when the next message starts. In v4.01a a partial message could be mixed with the next one. |
+| **Frequency check** | An `FA` frequency is only used with 8, 9 or 11 digits. A lost digit previously gave a 10× too low frequency and a wrong filter. |
+| **`=P` without a digit** | Now powers off without saving, as documented. Previously the settings were saved. |
 
 ### Other
 
@@ -83,9 +94,10 @@ work without the Windows Ingenia loader, with [`juma-flash.py`](#alternative-jum
 - Linker script: program memory ends **below the boot loader** (0x17D00). The build script refuses to produce a HEX file containing data in the boot loader area.
 - **EEPROM extension block** for the new settings, see [EEPROM](#eeprom-and-compatibility).
 - Service menu **Beep Tone**: tones in the clean range of the RS-928 buzzer, see [Beep Tone](#beep-tone-service-menu).
-- Start-up screen: `JUMA PA100 v4.05` / `OH2NLT/7SV DL4JC`. Every release has its own version number,
-  shown on the start-up screen; there is no separate build number any more. (The test builds before
-  v4.03 were called v4.02a Build 1–5-DL4JC.)
+- Start-up screen: `JUMA PA-100D` / `Firmware v5.00`. The credits are on the new user configuration
+  page **"About"** (the last page, UP/DOWN scrolls). Every release has its own version number; there
+  is no separate build number any more. (The test builds before v4.03 were called v4.02a Build
+  1–5-DL4JC.)
 
 The complete technical change history is in the comment header of `juma-pa100.c` (section *DL4JC Modifications*).
 
@@ -93,9 +105,20 @@ The complete technical change history is in the comment header of `juma-pa100.c`
 
 ## Operation – new settings
 
+### Saving settings (OPER long)
+
+Hold **OPER** for approx. 0.7 s in the normal display: *Save Settings?* appears, **BAND+** saves, **PWR**
+leaves the settings unsaved (they stay active). This saves gain per band, band and Auto/Manual without
+switching off. A short push of OPER toggles Operate/Standby as before, now on release. Not available
+while transmitting. The prompt at power off and on leaving the user configuration is unchanged.
+
+### About
+
+User configuration, last page **"About"**: firmware version and credits, UP/DOWN scrolls.
+
 ### F-Sense QSK
 
-User configuration, last page **"F-Sense QSK"**. The page only appears when *Auto Band Detect = F-Sense*.
+User configuration, page **"F-Sense QSK"** (before *About*). The page only appears when *Auto Band Detect = F-Sense*.
 
 Compared with the F-Sense mode of the original v4.01a:
 
@@ -108,8 +131,9 @@ Compared with the F-Sense mode of the original v4.01a:
 | **Delay at the start of each transmission** | none | approx. 20–40 ms without the PA (longer with SSB if the speech starts quietly) | none |
 | **Suitable for** | – | SSB, digital modes, CW without full QSK | CW with full QSK |
 
-\* With TUNE/CW, or a large step down. After a small step down (e.g. 20 m → 30 m) with only modulated
-signals the PA stays on the higher filter, see [Known limitations](#known-limitations).
+\* With TUNE/CW, or with a modulated signal that is clearly below the current filter. If the new frequency
+is only just below the filter (e.g. 10.1 MHz noise from the 20 m filter), the PA stays on the higher
+filter, see [Known limitations](#known-limitations).
 
 Rule of thumb: leave it **Off** unless you use CW with full break-in. With **On**, after a change to a lower band, key briefly at low power first.
 
@@ -254,7 +278,7 @@ programmer (see [Recovery](#recovery-with-a-programmer)).
    (The note "keep PWR pressed" in the old TRX-2 instructions predates the power latch, which the
    boot loader has had since 23.01.2007, see `iBL.s` / `mini_lcd-trx2.c`.)
 5. Wait until *dsPIC6014A detected, firmware version 1.1* appears → OK.
-6. *open HEX file* → select `firmware/Juma PA-100D v4.05.hex` (also attached to the
+6. *open HEX file* → select `firmware/Juma PA-100D v5.00.hex` (also attached to the
    [latest release](https://github.com/jcmerg/juma-pa100d-firmware/releases/latest)).
 7. Only **"program flash"** may be ticked. **"write data EEPROM" and "configure registers" must not
    be ticked.** There must be no error message (see below).
@@ -278,7 +302,7 @@ administrator rights. Requirements: Python 3 and pyserial (`pip install pyserial
 serial port check (steps 1 and 2) are the same.
 
 ```
-python3 tools/juma-flash.py --port COM3 "firmware/Juma PA-100D v4.05.hex"
+python3 tools/juma-flash.py --port COM3 "firmware/Juma PA-100D v5.00.hex"
 ```
 
 (macOS/Linux: e.g. `--port /dev/cu.usbserial-XXXX` or `/dev/ttyUSB0`; without `--port` the available
@@ -419,11 +443,12 @@ this version.
 | `juma-pa100.h`, `pa100_eeprom.h` | Hardware definitions, EEPROM structures |
 | `juma-trx2.gld` | Linker script for the Ingenia boot loader |
 | `build-xc16.sh` | Build script for XC16 |
-| `firmware/Juma PA-100D v4.05.hex` | Current version |
+| `firmware/Juma PA-100D v5.00.hex` | Current version |
 | `firmware/Juma PA-100D v4.01a Build 3 (original).hex` | Original v4.01a Build 3 (to go back) |
 | `tools/ingenia/ibl_dspiclist.xml` | Device file for the Ingenia loader |
 | `tools/juma-flash.py` | Serial firmware loader (alternative to Ingenia) |
 | `bootloader/` | Boot loader source and HEX; `Bootldr_Juma-PA100_v104.hex` = complete image for a first installation with a programmer (RS-928) |
+| `docs/manual/` | **Operating manual v5.00** (PDF, English and German) with Markdown sources; `build-manual.py` builds the PDFs (pandoc, weasyprint) |
 | `docs/` | Notes from the original firmware (5B4AIY): build record, EEPROM settings, example outputs of the serial port |
 | `Juma PA-100D.mcp/.mcw/.mcs` | Original MPLAB 8 project |
 
@@ -432,9 +457,10 @@ this version.
 ## Known limitations
 
 - **F-Sense with modulated signals:** two-tone, noise and SSB are counted too low, and the frequency
-  page shows a wrong frequency. A change to a higher band, and a large step down (e.g. 20 m → 40 m),
-  are recognised from any signal; for a small step down (e.g. 20 m → 30 m, 40 m → 80 m) set the band
-  once with **TUNE** (or CW).
+  page shows a wrong frequency. A change to a higher band is recognised from any signal, a step down
+  when even the highest sample + 20 % is below the current filter (e.g. 20 m → 40 m, 15 m → 20 m with
+  SSB or two-tone). If the new frequency is only just below the filter (e.g. 10.1 MHz noise from the
+  20 m filter), set the band once with **TUNE** (or CW).
 - **F-Sense QSK = On:** after a change to a lower band, a few milliseconds of poorly suppressed
   harmonics remain, because the frequency can only be measured once RF is present. See
   [F-Sense QSK](#f-sense-qsk).

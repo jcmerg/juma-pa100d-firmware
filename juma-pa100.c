@@ -663,10 +663,46 @@
  - Service menu: if saving is cancelled, the extension block (Beep Tone) is read back as well.
  - KX2/KX3 mode: the time-out for an incomplete FA message never applied, as the timer was set again before the test
    (also in v4.01a). A stale partial message is now dumped before a new character is added.
+ v5.00 - DL4JC - 10/OCT/2026
+ - New major version number. Some dealers list the original firmware v4.01a as "4.1a", which looked newer than v4.05.
+   The configuration and calibration blocks are unchanged, the original firmware can still be loaded at any time.
+ - Start-up screen: "JUMA PA-100D" / "Firmware v5.00". The credits moved to the new User Configuration page "About"
+   (the last page), where UP/DOWN scrolls through the version and the credits.
+ - F-Sense: the far rule of v4.05 could select a filter below the transmitted frequency, e.g. from 15m, 14MHz two-tone
+   counted as 11.9MHz selected the 30m filter, and tx_guard() did not see a mismatch as no sample was above 12MHz. The
+   band is now the highest amateur band between the highest sample and the highest sample + 20%, which selects 20m
+   here, and 80m (not 40m) for 3.7MHz SSB. (See eval_band() and fs_far_band())
+ - F-Sense: once a band has been measured in a transmission, the band is only increased. Previously this only applied
+   after a band change, so if the first sample set confirmed the current band, a later low SSB miscount could still
+   lower the band with the far rule.
+ - KX2/KX3 mode: the time-out of v4.05 was measured between processing two characters, so a main loop stall (e.g. the
+   save prompt) dumped a complete message waiting in the receive queue. Now an 'F' always starts a new message, which
+   dumps a stale partial message without a time-out. The start-up option BAND- (message time-out 5 seconds) now only
+   applies to the HR50 mode.
+ - set_relays(): the separate release wait is gone, tx_off_ms covers RF off by set_relays() as well as by tx_guard().
+ - Cancelling a save prompt reads the extension block only once. Cancelling the User Configuration save now also
+   re-applies the run-time state (serial handler, baud rate, backlight, contrast, temperature units, display pages).
+   Previously e.g. a cancelled change from F-Sense to Yaesu CAT left the Yaesu serial handler running. (See apply_cfg())
+ - tx_guard() also reads the over-current latch (OC) directly, so that it turns RF off while the main loop is blocked.
+ - set_relays() reads Current_Band once. The 1mS interrupt can set NOT_KNOWN, which previously could switch the filter
+   relays without the RF off sequence. The gain relays (DB_2/DB_4) are no longer switched while TX_ON is on.
+ - shut_down() and the remote 'P' command turn RF off first. '=P' without a digit no longer saves the settings (the
+   unsigned digit wrapped to a large value).
+ - KX2/KX3 and HR50: an FA frequency is only used with exactly 9 or 11 digits (freq_digits_ok()).
+ - OPER: a short push toggles Operate/Standby on release, a long push (not while transmitting) opens the save prompt,
+   so that gain, band and Auto/Manual can be saved without switching off. 'No' keeps the settings unsaved.
+ - Power off with PWR: RF is turned off before the save prompt and the EEPROM write.
+ - Fan: the hysteresis described since v1.05 (fan_stop) was never applied, so the fan twitched at the cut-in
+   temperature. The fan now stops 2C/4F below the cut-in temperature. (See fan_control())
+ - FA frequencies with 8 digits (Yaesu FT-450/950/2000, FTDX1200/3000/5000) are accepted as well as 9 and 11.
+ - main() uses apply_cfg() for the configuration dependent run-time state; prototypes of save_settings() and
+   save_defval() in service.c and serial_test.c corrected.
 */
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
+#include <string.h>
 #include <math.h>
 #include <ctype.h>
 #include "juma-pa100.h"						// JUMA-TRX2 hardware specific definitions
@@ -905,7 +941,8 @@ const char *page_prompt[] = {					// Indexed by: sub_page1 (Line 1)
 							"Graphic Display",	// 13
 							"RF Power Meter",	// 14
 							"Start-Up Display",	// 15
-							"F-Sense QSK"		// 16
+							"F-Sense QSK",		// 16
+							"About"				// 17
 							};
 
 const char *poll_cmd[] = 	{	// Polling Messages. Indexed by: Band_Select_Mode. First character is byte count.
@@ -960,7 +997,6 @@ const char Rmt_Pwr_Off[] = {"Remote Power Off"};
 const char Data_Saved[] = {"   Data Saved"};
 
 // Standard Display Prompts
-const char Hello[] = {"%10s%6s"};
 const char SWR_Alarm[] = {" SWR "};
 const char CURR_Alarm[] = {" O/C "};
 const char TEMP_Alarm[] = {" TEMP"};
@@ -991,7 +1027,15 @@ const char Chksum_Err[] = {"\n\rEEPROM Checksum Error! Re-loading Factory Defaul
 const char Chksum_Err_Msg[] = {" Checksum Error "};
 const char Loading_Defaults[] = {"Loading Defaults"};
 const char Juma_PA100[] = {"JUMA PA100"};
-const char OH2NLT_OH7SV[] = {"OH2NLT/7SV DL4JC"};	// OH2NLT, OH7SV and DL4JC (modified build). 16 characters, the display width.
+const char Juma_PA100D[] = {"  JUMA PA-100D"};
+const char Firmware_Msg[] = {"Firmware%8s"};		// Start-up screen and About page, 16 characters, the display width
+const char *credits[] = {						// About page, indexed by: about_line (line 0 is the version). DL4JC
+							"",
+							"OH2NLT  Original",	// Juha Niinikoski, original firmware
+							"OH7SV       JUMA",	// Matti Hohtola, JUMA
+							"5B4AIY  to 4.01a",	// Adrian Ryan, extensions up to v4.01a
+							"DL4JC  from 4.03"	// Modifications after v4.01a
+							};
 const char Calibration_msg[] = {"  Calibration"};
 const char Mode_msg[] = {"  Mode%7s"};
 const char Display_Next[] = {" DISPLAY = Page "};
@@ -1002,7 +1046,7 @@ const char TX_Msg[] = {"  TX "};
 const char Err_Msg[] = {" Err "};
 const char OPER_Msg[] = {" OPER"};
 const char _16s[] = {"%-16s"};
-const char KX3_msg1[] = {"KX3 Msg Time-Out"};
+const char KX3_msg1[] = {"Serial Time-Out"};	// HR50 mode (the KX2/KX3 mode no longer uses a time-out)
 const char KX3_msg2[] = {"Set to:   5 Secs"};
 const char User_Msg[] = {"      User"};
 const char Config_Msg[] = {" Configuration"};
@@ -1306,7 +1350,7 @@ void save_defval(void)
 	int i;
 	int mode = Band_Select_Mode;
 	unsigned int word;
-	int mode_idx = ((char *)&eeprom.defval.bsel_mode - (char *)&eeprom.defval) / 2;	// Word index of bsel_mode
+	int mode_idx = offsetof(struct defval, bsel_mode) / 2;	// Word index of bsel_mode
 
 	ext.extval.bsel_ext = (mode == XIEGU) ? BSEL_EXT_XIEGU : (mode == HR50) ? BSEL_EXT_HR50 : BSEL_EXT_NONE;
 
@@ -1483,7 +1527,7 @@ void xmit_cmd(const char *p)
 */
 void set_repeat_speed(void)
 	{
-	rep_dly = (SPEED_ARRAY & (1L << sub_page1)) ? _FAST : _SLOW;	// 1L: there are now 17 pages
+	rep_dly = (SPEED_ARRAY & (1L << sub_page1)) ? _FAST : _SLOW;	// 1L: there are now 18 pages
 	}
 
 void display_beeps(int page)
@@ -1580,6 +1624,19 @@ int get_band(unsigned frequency)
 	return i;
 	}
 
+// TRUE if the n characters are all digits. FA frequencies have 11 digits (Kenwood, Elecraft), 9 (Yaesu FT-991, FTDX10
+// and later) or 8 (Yaesu FT-450, FT-950, FT-2000, FTDX1200/3000/5000). A packet with a lost or extra digit would
+// otherwise give e.g. a 10x too low frequency and a wrong filter. DL4JC
+int freq_digits_ok(const char *d, int n)
+	{
+	if((n != 8) && (n != 9) && (n != 11)) return FALSE;
+
+	while(n--)
+		if(!isdigit(*d++)) return FALSE;
+
+	return TRUE;
+	}
+
 // Band for an ASCII frequency in Hz, as in the FA and IF data packets
 int ascii_freq_band(char *digits)
 	{
@@ -1657,35 +1714,37 @@ void serial_kx3(void)				// Serial Data Handler
 		{
 		c = getch();								// Get character from UART
 
-		if(cmd_buf_idx && !cmd_timeout)				// The rest of the previous message did not arrive in time, so dump it.
-			clear_buffer();							// (Previously the timer was set again before the test, which then
-													// never applied. DL4JC)
+		if(cmd_buf_idx && (c == 'F'))				// An 'F' always starts a new message, so a stale partial message is
+			clear_buffer();							// dumped and never mixed with the next one. (A time-out does not work
+													// here: after a main loop stall the queued characters of a complete
+													// message would be older than the time-out. DL4JC)
 		if(cmd_buf_idx == 0 && c != 'F')			// Not a valid start of message
 			return;
 
-		cmd_timeout = msg_time;						// Set the message timer
-
 		if(cmd_buf_idx == 1 && c != 'A')			// These are not the droids you're looking for,
 			{
-			cmd_timeout = 0;						// so clear the message timer,
-			clear_buffer();							// and the buffer and index.
+			clear_buffer();							// so clear the buffer and index.
 			return;
 			}
 
 		cmd_buf[cmd_buf_idx++] = c;					// Character is valid, so add it to the buffer.
 
-		if((cmd_buf_idx > MSG_LEN) || !cmd_timeout)	// Are we about to overrun the buffer or have we timed-out?
+		if(cmd_buf_idx > MSG_LEN)					// Are we about to overrun the buffer?
 			clear_buffer();							// Yes, so, dump the buffer and restart.
 		else										// No, so continue.
 			{
 			if(c == ';')							// We've received the End-Of-Message character of a data packet.
 				{
-				if(Poll_Time)
-					poll_resp_rec = TRUE;			// If polling is enabled, set the poll response received flag.
+				cmd_buf[cmd_buf_idx - 1] = 0;		// Terminate the digits in place of the ';'.
 
-				Current_Band = ascii_freq_band((char *)cmd_buf + 2);
-				cmd_timeout = 0;					// Reset the message timer,
-				clear_buffer();						// reset the buffer and index, and restart.
+				if(freq_digits_ok((char *)cmd_buf + 2, cmd_buf_idx - 3))	// Only a complete frequency is used. DL4JC
+					{
+					if(Poll_Time)
+						poll_resp_rec = TRUE;		// If polling is enabled, set the poll response received flag.
+
+					Current_Band = ascii_freq_band((char *)cmd_buf + 2);
+					}
+				clear_buffer();						// Reset the buffer and index, and restart.
 				}	// End IF
 			}	// End ELSE
 		}	// End IF
@@ -1742,10 +1801,15 @@ void hr50_command(void)
 
 	if(((cmd_buf[0] == 'F') && (cmd_buf[1] == 'A')) || ((cmd_buf[0] == 'I') && (cmd_buf[1] == 'F')))
 		{
-		if(cmd_buf_idx < 13) return;				// FA; or a short packet, no frequency.
+		if(cmd_buf[0] == 'I')						// IF: 11 digits, Hz, followed by other data.
+			{
+			if(cmd_buf_idx < 13) return;
 
-		cmd_buf[13] = 0;							// 11 digits, Hz. The IF packet continues with other data.
-		Current_Band = ascii_freq_band((char *)cmd_buf + 2);
+			cmd_buf[13] = 0;
+			}
+
+		if(freq_digits_ok((char *)cmd_buf + 2, strlen((char *)cmd_buf + 2)))	// FA: 8, 9 or 11 digits, Hz. FA; or a
+			Current_Band = ascii_freq_band((char *)cmd_buf + 2);				// broken packet is ignored.
 		return;
 		}
 
@@ -1987,6 +2051,8 @@ void disp_id(void)
 
 void shut_down(void)
 	{
+	TX_ON = OFF;								// RF off before the fans. DL4JC
+	pa_state = STANDBY;
 	set_pwm3_dac(OFF);							// Turn backlighting off
 	FAN1 = OFF;
 	FAN2 = OFF;									// Turn fan off
@@ -2231,7 +2297,8 @@ void remote(void)
 		: 5000;								// Message received, so reset the command time-out, decremented in _T3Interrupt() in timers_pwm.c
 // 2.443mS/1uS, 2.672mS/25uS, 2.855mS/50uS, 3.237mS/100uS Loop cycle time versus delay in adc12.c (Display Page 0, RF Power)
 	c = cmd_buf[1];							// Get the command,
-	digit = cmd_buf[2] - '0';				// and any numeric parameter.
+	digit = isdigit(cmd_buf[2]) ? cmd_buf[2] - '0' : 0;	// and any numeric parameter, 0 if none. (Previously '=P' without
+											// a digit wrapped to a large value and saved the settings. DL4JC)
 
 	switch(c)
 		{
@@ -2260,6 +2327,9 @@ void remote(void)
 		break;
 
 		case 'P':							// Request to power down
+			TX_ON = OFF;					// RF off during the EEPROM write and the message. DL4JC
+			pa_state = STANDBY;
+
 			if(digit) save_defval();		// Save current state
 
 			display_screen(Rmt_Pwr_Off, (digit) ? Data_Saved : "");
@@ -2475,6 +2545,8 @@ void check_alarms(void)
  3 - Save both Calibration & Configuration values,
  7 - Restore Factory Defaults and save all
 */
+void apply_cfg(void);
+
 void save_settings(int prompt, int mode)
 	{
 	int flag = TRUE;
@@ -2495,7 +2567,7 @@ void save_settings(int prompt, int mode)
 		if(mode & 1)
 			save_calval();					// Save new System Calibration Settings
 
-		if(mode & 2)						// Save new User Configuration settings
+		if(mode & (2 | 8))					// Save new User Configuration settings
 			{
 			save_defval();
 			changed = FALSE;				// Reset User Settings Changed flag
@@ -2505,17 +2577,19 @@ void save_settings(int prompt, int mode)
 		}
 	else
 		{
-		if(mode & 1)						// Restore previous System Calibration Settings,
-			{
+		if(mode & 1)						// Restore previous System Calibration Settings
 			read_calval();
-			read_extval();					// and the Beep Tone service setting in the extension block. DL4JC
-			}
 
 		if(mode & 2)						// Restore previous User Configuration Settings
-			{
 			read_defval();
-			read_extval();
+
+		if(mode & 3)
+			read_extval();					// Both have settings in the extension block (Beep Tone, F-Sense QSK). DL4JC
+
+		if(mode & 2)
+			{
 			load_ext_modes();
+			apply_cfg();
 			}
 
 		flag = FALSE;
@@ -2526,6 +2600,26 @@ void save_settings(int prompt, int mode)
 	ms_delay(1000);
 	wait_PWR_BAND_UP_rls();					// If still pressed, wait for button to be released...
 	set_chgen(Scale_Type);					// Load bar graph fonts
+	}
+
+/*
+ Re-apply the run-time state derived from the user configuration after it has been read again (save prompt cancelled).
+ Previously e.g. a cancelled change from F-Sense to Yaesu CAT left the Yaesu serial handler running in the F-Sense mode,
+ or a cancelled baud rate change left the UART at the new speed. DL4JC
+*/
+void apply_cfg(void)
+	{
+	set_pwm4_dac(eeprom.defval.contrast);
+	set_pwm3_dac(eeprom.defval.back_light);
+	SetUSART1baud(eeprom.defval.br);
+	Current_Scale = Temp_Scale;
+	fan_stop = (Fan_Start - 4) + (2 * Temp_Scale);
+	max_page = (Band_Select_Mode == FREQ_SENSE) ? MAX_SUB_PAGE0 + 1 : MAX_SUB_PAGE0;
+
+	if(sub_page0 > max_page) sub_page0 = 0;
+
+	_rs232_mode();
+	clear_buffer();
 	}
 
 // Handle PWR button.
@@ -2544,6 +2638,8 @@ void power_off(void)
 		do	{
 			if(!button_timer)
 				{
+				TX_ON = OFF;						// RF off before the save prompt and the EEPROM write. DL4JC
+				pa_state = STANDBY;
 				beep(HZ392_01, Beep_Time * 2);		// Play low sound when ready for power down
 
 				if(changed) save_settings(0, 2);	// Prompt to save the current User Settings
@@ -2609,24 +2705,56 @@ void reset_fsense(void)						// Clear F-sense
  this selected a lower band, i.e. a filter below the transmitted frequency. A lower band is therefore only selected from
  a clean carrier (TUNE, CW), whose samples lie within FS_SPREAD of each other; modulated signals spread more. A higher
  band, the safe direction for the amplifier, and any band while the band is unknown, are still selected at once.
- A modulated signal may also select a lower band if even its highest sample is far below the current filter, i.e. below
- 2/3 of its lowest frequency: the highest sample was measured at approx. 85% (two-tone) to 100% (noise) of the real
- frequency, while a real band change down is usually a much larger step, e.g. 20m to 40m. (v4.05) DL4JC
+ A modulated signal may also select a lower band, at the start of a transmission only, if even an upper estimate of its
+ frequency is below the current filter. The highest sample was measured at approx. 85% (two-tone) to 100% (noise) of the
+ real frequency, so the real frequency lies between the highest sample and the highest sample + 20%. The band is the
+ highest amateur band in this range (fs_far_band()), not the band of the highest sample: e.g. 14MHz two-tone, counted
+ as 11.9MHz, selects 20m, not 30m, and 3.7MHz SSB selects 80m, not 40m. If the real frequency is still higher,
+ tx_guard() turns RF off at the first sample above the filter and the next sample set raises the band.
+ Once a band has been measured in a transmission, the band is only increased (last_band). (v5.00) DL4JC
 */
 #define FS_SPREAD	5				// Clean carrier: highest - lowest sample <= highest / 2^FS_SPREAD (approx. 3%)
+
+int fs_band(unsigned int f)			// Band for a frequency in kHz, as counted by the 1mS interrupt (band_bins[]), see timers_pwm.c
+	{
+	int i = 0;
+
+	while((i < 10) && (f > band_limits[i])) i++;
+
+	return i;
+	}
+
+// Amateur band edges (kHz) for each band (filter). Band 3 includes 60m, which uses the 40m filter.
+const unsigned int ham_lower[] = {0, 1800, 3500, 5250, 10100, 14000, 18068, 21000, 24890, 28000};
+const unsigned int ham_upper[] = {0, 2000, 4000, 7300, 10150, 14350, 18168, 21450, 24990, 29700};
+
+int fs_far_band(unsigned int lo, unsigned int hi)	// Highest amateur band between lo and hi (kHz), see eval_band(). DL4JC
+	{
+	int b = MAX_BAND;
+
+	do	{
+		if((ham_lower[b] <= hi) && ((ham_upper[b] + (ham_upper[b] >> 6)) >= lo))	// Upper edge + approx. 1.5%
+			return b;
+		} while (--b);
+
+	return fs_band(hi);				// Not in an amateur band: the band of the upper estimate, the safe side for the PA.
+	}
 
 void eval_band()	// Improved F-sense - A.Ryan - 5B4AIY - 30/APR/2014
 	{
 	static int last_band;					// Initialised to zero by default
 	int i;
-	int clean, far;
+	int clean, far, far_band;
+	unsigned int hi;
 
 	if(!key) last_band = 0;					// Reset last_band in RX mode
 
 	if(!freq_sample_ctr)					// Decide when we have complete set of measurements available
 		{
 		clean = (fs_max >= fs_min) && ((fs_max - fs_min) <= (fs_max >> FS_SPREAD));
-		far = (fs_max >= fs_min) && (fs_max < (unsigned int)(((unsigned long)filter_lower(Current_Band) * 2UL) / 3UL));
+		hi = (fs_max < 50000U) ? fs_max + fs_max / 5 : 0xFFFF;	// Upper estimate of the real frequency of a modulated signal
+		far_band = fs_far_band(fs_max, hi);
+		far = (fs_max >= fs_min) && (far_band < Current_Band) && (hi < filter_lower(Current_Band));
 
 		if(fsense_tst)						// Debug Mode - Can be invoked from Serial Test Suite
 			{
@@ -2650,11 +2778,19 @@ void eval_band()	// Improved F-sense - A.Ryan - 5B4AIY - 30/APR/2014
 				} while (--i);
 
 			if((last_band < i)
-				&& ((i > Current_Band) || clean || far || (Current_Band == NOT_KNOWN) || (Current_Band == OUT_OF_BAND)))
+				&& ((i > Current_Band) || clean || (Current_Band == NOT_KNOWN) || (Current_Band == OUT_OF_BAND)))
 				{
 				last_band = i;
 				Current_Band = i;			// Set band
 				}
+			else if((last_band < far_band) && far && !clean && (i < Current_Band))
+				{
+				last_band = far_band;
+				Current_Band = far_band;	// Modulated signal far below the current filter, set the band from the upper estimate
+				}
+
+			if(key && (Current_Band <= MAX_BAND) && (last_band < Current_Band))
+				last_band = Current_Band;	// Measured in this transmission: from now on the band is only increased. DL4JC
 
 			if(key) fsense_confirmed = TRUE;	// The band has been measured in this transmission. (F-Sense QSK Off)
 
@@ -2737,33 +2873,31 @@ void eval_xiegu_band(void)
 void set_relays(void)
 	{
 	static int relay_band = -1;			// Band the filter relays are set for, -1 = not yet set
-	static int release_wait = FALSE;	// Waiting for the PA relays to release before switching the filters
+	int band = Current_Band;			// Read once: the 1mS interrupt can set NOT_KNOWN at any time, and the relays must
+										// only ever be switched through the sequence below. DL4JC
 /*
  Never switch the filter relays under power. If the band changes while transmitting, RF is turned off first, and the
- relays are switched once the PA relays have released. After any band change TX is held off until the new relays have
- settled, see the TX evaluation in main(). Both use relay_settle, which is decremented in _T3Interrupt(). DL4JC
+ relays are switched once the PA relays have released, i.e. RELAY_SETTLE mS after RF off (tx_off_ms, counted in
+ tx_guard()), whoever turned it off. After any band change TX is held off until the new relays have settled, see the TX
+ evaluation in main(). relay_settle is decremented in _T3Interrupt(). DL4JC
 */
-	if(Current_Band != relay_band)
+	if(band != relay_band)
 		{
 		if(TX_ON)						// Band change while transmitting,
 			{
 			TX_ON = OFF;				// so RF off first,
 			tx = 'R';
 			relay_settle = RELAY_SETTLE;
-			release_wait = TRUE;
 			return;						// and switch the relays later.
 			}
 
-		if(release_wait && relay_settle) return;	// Still waiting for the PA relays to release.
-
-		if(tx_off_ms < RELAY_SETTLE)	// RF was turned off only recently, e.g. by tx_guard() in the interrupt, and the
-			{							// PA relays may still be releasing: wait, and hold TX off meanwhile.
+		if(tx_off_ms < RELAY_SETTLE)	// RF was turned off only recently, here or by tx_guard() in the interrupt, and
+			{							// the PA relays may still be releasing: wait, and hold TX off meanwhile.
 			relay_settle = RELAY_SETTLE;
 			return;
 			}
 
-		release_wait = FALSE;
-		relay_band = Current_Band;
+		relay_band = band;
 		relay_settle = RELAY_SETTLE;	// TX is held off until the new relays have settled,
 		filter_mismatch = FALSE;		// and the new filter is checked again in tx_guard().
 		}
@@ -2774,8 +2908,11 @@ void set_relays(void)
 	DB_4 = (RF_Gain[Current_Band] & 0x02) ? 0 : 1;
  it takes 18 bytes more code! A.Ryan - 5B4AIY - 07/JUN/2013
 */
-	if(RF_Gain[Current_Band] & 0x01) DB_2 = 0; else DB_2 = 1;
-	if(RF_Gain[Current_Band] & 0x02) DB_4 = 0; else DB_4 = 1;
+	if(!TX_ON)							// Not under power: a gain change (UP/DOWN, remote 'G') while transmitting is
+		{								// applied after the transmission. DL4JC
+		if(RF_Gain[band] & 0x01) DB_2 = 0; else DB_2 = 1;
+		if(RF_Gain[band] & 0x02) DB_4 = 0; else DB_4 = 1;
+		}
 
 // Set RF Filter relays, elegant method
 /*
@@ -2802,12 +2939,12 @@ void set_relays(void)
  If the band number is 0, this is out-of-band, and the 10m filter is selected.
  Similarly, if the band number is 10, then the 10m filter is also selected.
 */
-	if(Current_Band == 1)	M1_8 = 1;	else M1_8 = 0;		// Set/Clear 160m relay
-	if(Current_Band == 2)	M3_5 = 1;	else M3_5 = 0;		// Set/Clear 80m relay
-	if(Current_Band == 3)	M7 = 1;		else M7 = 0;		// Set/Clear 40m relay
-	if(Current_Band == 4)	M10 = 1;	else M10 = 0;		// Set/Clear 30m relay
-	if((Current_Band == 5) || (Current_Band == 6)) M14_18 = 1;	else M14_18 = 0;	// Set/Clear 20m-17m relay
-	if((Current_Band == 0) || (Current_Band > 6)) M21_28 = 1;	else M21_28 = 0;	// Set/Clear 15m-12m-10m relay
+	if(band == 1)	M1_8 = 1;	else M1_8 = 0;				// Set/Clear 160m relay
+	if(band == 2)	M3_5 = 1;	else M3_5 = 0;				// Set/Clear 80m relay
+	if(band == 3)	M7 = 1;		else M7 = 0;				// Set/Clear 40m relay
+	if(band == 4)	M10 = 1;	else M10 = 0;				// Set/Clear 30m relay
+	if((band == 5) || (band == 6)) M14_18 = 1;	else M14_18 = 0;	// Set/Clear 20m-17m relay
+	if((band == 0) || (band > 6)) M21_28 = 1;	else M21_28 = 0;	// Set/Clear 15m-12m-10m relay
 	}
 
 void check_polling(void)
@@ -2936,14 +3073,18 @@ void fan_control(void)
 		high_speed = Fan_Start + PLUS_20F;
 		}
 
-	fan_speed = OFF;
+	static int temp_speed = OFF;	// Speed demanded by the temperature alone, for the hysteresis
 
-	if(scaled_pa_temp >= Fan_Start) fan_speed = LOW_SPEED;
+	fan_speed = OFF;
+// Hysteresis: once running, the fan only stops below fan_stop (2C/4F under Fan_Start). The comment above describes
+// this, but fan_stop was never read, so the fan twitched at the cut-in temperature. (v5.00) DL4JC
+	if((scaled_pa_temp >= Fan_Start) || (temp_speed && (scaled_pa_temp > fan_stop))) fan_speed = LOW_SPEED;
 
 	if(scaled_pa_temp >= medium_speed) fan_speed = MEDIUM_SPEED;
 
 	if(scaled_pa_temp >= high_speed) fan_speed = HIGH_SPEED;
 
+	temp_speed = fan_speed;
 	fan_speed += Fan_Speed;		// Select whether the fan runs continuously
 	max_min(&fan_speed, HIGH_SPEED, OFF);
 	FAN1 = (fan_speed & 0x02) ? ON : OFF;
@@ -3154,6 +3295,16 @@ void cfg_16(void)
 	sprintf(lcdpbuff, cfg_2_Msg, on_off[FSense_QSK]);
 	}
 
+void cfg_17(void)						// About: firmware version and credits, UP/DOWN scrolls. Nothing is stored. DL4JC
+	{
+	static int about_line;
+
+	set_value(1, &about_line, (sizeof(credits) / sizeof(credits[0])) - 1, 0);
+
+	if(about_line) sprintf(lcdpbuff, _16s, credits[about_line]);
+	else sprintf(lcdpbuff, Firmware_Msg, VERSION);
+	}
+
 void (*set_cfg[])(void) = {				// Indexed by: sub_page1
 						cfg_0,			// 0	Auto Band Select Mode (0 = Yaesu, 1 = Elecraft KX-3, 3 = Juma TRX-2, 4 = F-Sense, 5 = FT-817)
 						cfg_1,			// 1	Set Serial Port Speed (1200 - 115200)
@@ -3171,7 +3322,8 @@ void (*set_cfg[])(void) = {				// Indexed by: sub_page1
 						cfg_13,			// 13	Select Graphical Display Scale (Original/Large/Small)
 						cfg_14,			// 14	Select RF Power Meter Display, (Watts/dBm)
 						cfg_15,			// 15	Start-Up Page select (Power/SWR/Voltage/Current/Temperature)
-						cfg_16			// 16	F-Sense QSK (On/Off), only in the F-Sense mode
+						cfg_16,			// 16	F-Sense QSK (On/Off), only in the F-Sense mode
+						cfg_17			// 17	About (version and credits)
 						};
 
 void display_cfg_page(void)
@@ -3316,8 +3468,8 @@ int main(void)
 // Put hello messages to LCD if Splash Screen flag is ON
 	if((int)cal.calval.splash)
 		{
-		sprintf(lcdpbuff, Hello, Juma_PA100, VERSION);
-		display_screen(lcdpbuff, OH2NLT_OH7SV);
+		sprintf(lcdpbuff, Firmware_Msg, VERSION);	// The credits are on the About page of the User Configuration. DL4JC
+		display_screen(Juma_PA100D, lcdpbuff);
 		y = 2000;					// and set sign-on prompt delay time
 		}
 // Check if service mode start
@@ -3360,8 +3512,6 @@ int main(void)
 // RS-232 I/O Test
 	if(!DISP) rs232_test();							// If DISPLAY pressed during startup, Goto RS-232 test loop.
 // Other
-	Current_Scale = Temp_Scale;						// 0 = Fahrenheit, 1 = Celsius
-
 	batt_pre_limit = (Enabled_Alarms & LO_V)
 		? cal.calval.pre_limit_trip
 		: OFF;
@@ -3370,16 +3520,11 @@ int main(void)
 		? Current_Band
 		: TEN_METRES;
 
-	fan_stop = (Fan_Start - 4) + (2 * Temp_Scale);	// Hysteresis to stop fan 'twitch', 4F or 2C
-
-	if(Band_Select_Mode == FREQ_SENSE) max_page = MAX_SUB_PAGE0 + 1;					// Allow extended Frequency Display page.
-
-	clear_buffer();								// Initialise the PA-100D receive buffer and index.
 	batt_avg = ((double)convert_adc12(BATT_CH) * (double)Voltmeter_Cal);				// Initial sample for battery voltage, mV
 	pa_temp = (double)convert_adc12(TEMP);		// Initial heat-sink temperature value
 	pwr_scale_factor = (SCALE_CONST * cal.calval.max_power / cal.calval.fwd_pwr_mult);	// See explanation in juma-pa100.h
 	batt_scale_factor = cal.calval.overvoltage_trip - cal.calval.undervoltage_trip;
-	_rs232_mode();								// Select serial port protocol
+	apply_cfg();								// Serial protocol, temperature units, fan hysteresis, display pages, receive buffer
 	rep_dly = _SLOW;
 	decay_counter = 0;							// This seems to help eliminate the spurious 0.6W power
 	fwd_pwr = rev_pwr = 0L;						// display when exiting the service mode. A.Ryan 13/FEB/2015
@@ -3481,10 +3626,30 @@ int main(void)
 			if(!alarms)										// No alarms
 				{
 // OPER
+/*
+ Short push: toggle Operate/Standby, on release. Long push (not while transmitting): save the settings (gain, band,
+ Auto/Manual, ...) without switching off. Previously they could only be saved with the prompt at power off. 'No' keeps
+ the current settings unsaved (mode 8, nothing is read back). DL4JC
+*/
 				if(!OPER)									// SW3 - Do not allow change of state in User Config Mode
 					{
-					pa_state ^= 1;							// Toggle PA State. (Standby = 0, Operate = 1)
-					beep((pa_state) ? HZ587_31 : HZ466_85, Beep_Time);
+					button_timer = LONG_PUSH;
+
+					do	{
+						if(!button_timer && !KEY)			// Held (and not transmitting now): save prompt
+							{
+							beep(HZ466_85, LONG_BEEP);
+							save_settings(0, 8);
+							break;
+							}
+						} while (!OPER);
+
+					if(button_timer)						// Short push
+						{
+						pa_state ^= 1;						// Toggle PA State. (Standby = 0, Operate = 1)
+						beep((pa_state) ? HZ587_31 : HZ466_85, Beep_Time);
+						}
+
 					while (!OPER);							// Wait for button release...
 					ms_delay(BUTTON_DEBOUNCE);
 					}

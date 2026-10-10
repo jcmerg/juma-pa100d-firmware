@@ -6,8 +6,8 @@
 #include <p30F6014A.h>
 
 // Version Data
-#define VERSION				"v4.05"			// One version number per release, shown on the start-up screen (max. 6 characters)
-#define BUILD_DATE			"04/OCT/2026"
+#define VERSION				"v5.00"			// One version number per release, shown on the start-up screen (max. 6 characters)
+#define BUILD_DATE			"10/OCT/2026"
 
 // Macro Definitions
 #define lcd_spc(count)		set_ch_bits(' ', count)		// Print spaces
@@ -45,8 +45,9 @@
 #define USER_CONFIG_MODE	MAX_LCD_MODE
 #define NORMAL_DISPLAY_MODE	0
 #define	MAX_SUB_PAGE0		4				// Sub page 0 normal displays
-#define	MAX_SUB_PAGE1		16				// Sub page 1 configuration displays
+#define	MAX_SUB_PAGE1		17				// Sub page 1 configuration displays
 #define FSENSE_QSK_PAGE		16				// F-Sense QSK On/Off, only shown in the F-Sense mode
+#define ABOUT_PAGE			17				// Firmware version and credits
 #define	DEFAULT_BAUD_RATE	3				// Default Baud rate = 9600
 #define	MAX_BUFFER			16				// Elecraft Receiver Buffer Size
 #define MSG_LEN				14				// Message length for FA data packet

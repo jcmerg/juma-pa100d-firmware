@@ -231,8 +231,10 @@ static void tx_guard(void)
 	else if(key_off_count < KEY_OFF_TICKS) key_off_count++;
 // Main loop watchdog
 	if(main_heartbeat < MAIN_TIMEOUT) main_heartbeat++;
-// Force RF off if required
-	if((key_off_count >= KEY_OFF_TICKS) || isr_swr_trip || filter_mismatch || (alarms & ALARM_MASK) || (main_heartbeat >= MAIN_TIMEOUT))
+// Force RF off if required. The over-current latch (OC) is also read here directly, so that it acts even while the main
+// loop is blocked and check_alarms() has not yet set the alarm bit. DL4JC
+	if((key_off_count >= KEY_OFF_TICKS) || isr_swr_trip || filter_mismatch || (alarms & ALARM_MASK) || OC
+		|| (main_heartbeat >= MAIN_TIMEOUT))
 		TX_ON = OFF;
 // Time since RF off, so that set_relays() never switches the filter relays while the PA relays are still releasing
 	if(TX_ON) tx_off_ms = 0;

@@ -30,7 +30,7 @@ extern void beep(int, int);						// Added - 5B4AIY
 extern int get_817_band(int);					// Get Yaesu 817 band data
 extern int get_xiegu_band(int);					// Get Xiegu band data
 extern void display_hdr(void);
-extern void save_defaults();
+extern void save_defval(void);
 extern void save_calval();
 extern unsigned int crc_16(unsigned int, unsigned int);
 extern unsigned int crc_8(unsigned char, unsigned int);
@@ -163,7 +163,7 @@ void erase_EEPROM(void)
 	for(i = 0; i < 256; i += 2) EraseEE(EEPAGE, (i + EEDEF), WORD);
 
 	dump_eeprom();
-	save_defaults();
+	save_defval();
 	save_calval();
 	dump_eeprom();
 	}

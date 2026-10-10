@@ -1,4 +1,4 @@
-# JUMA PA-100D Firmware – v4.05 (DL4JC)
+# JUMA PA-100D Firmware – v5.00 (DL4JC)
 
 Deutsch | [English](README.md)
 
@@ -18,6 +18,9 @@ die Einstellung **Beep Tone** für den RS-928 und die Möglichkeit, mit dem aktu
 > einer Firmware, die nicht von JUMA stammt, kann Garantie und Support des Herstellers erlöschen
 > lassen. Teste jeden neuen Build zuerst mit Dummy-Load und kleiner Leistung. Du kannst jederzeit
 > zur originalen v4.01a zurückkehren, siehe [Zurück zur Original-Firmware](#zurück-zur-original-firmware).
+>
+> **Versionsnummern:** Manche Händler führen die Original-Firmware v4.01a als **„4.1a“**. Das ist das
+> Original, keine neuere Version. Diese Firmware beginnt mit v5.00, damit beides nicht verwechselt wird.
 
 ---
 
@@ -35,6 +38,8 @@ die Einstellung **Beep Tone** für den RS-928 und die Möglichkeit, mit dem aktu
 
 ---
 
+**Bedienungsanleitung:** [Deutsch (PDF)](docs/manual/JUMA%20PA-100D%20Bedienungsanleitung%20v5.00.pdf) · [Englisch (PDF)](docs/manual/JUMA%20PA-100D%20Operating%20Manual%20v5.00.pdf) – vollständige Bedienung, Einrichtung und Kalibrierung mit v5.00.
+
 ## Neuerungen
 
 ### Schutz beim Senden
@@ -45,19 +50,23 @@ die Einstellung **Beep Tone** für den RS-928 und die Möglichkeit, mit dem aktu
 | **KEY losgelassen** | HF aus 2 ms nachdem KEY inaktiv wird, egal wo die Hauptschleife gerade steht. |
 | **SWR im Interrupt** | Die ADC-Messungen laufen jetzt im 1-ms-Interrupt. Das SWR wird über *Power Averaging* × 4 ms gemittelt (mindestens 8 ms) und 20 ms nach TX-Beginn geprüft. Das schaltet schnell und sicher ab, ohne Fehlauslösungen. |
 | **Watchdog der Hauptschleife** | HF aus, wenn die Hauptschleife 2 s lang nicht gelaufen ist. |
+| **Überstrom im Interrupt** | Der Überstrom-Latch der PA-Platine wird jede Millisekunde gelesen und schaltet HF sofort ab, auch wenn die Hauptschleife wartet (z. B. bei einer Speichern-Abfrage). |
 | **User-Config-Menü** | TX_ON wird zwangsweise abgeschaltet. In v4.01a blieb es in dem Zustand, den es beim Betreten des Menüs hatte. |
 | **Trap-Handler** | Bei einem Prozessorfehler (Address-, Stack- oder Math-Trap) wird zuerst die HF abgeschaltet und der Lüfter eingeschaltet. |
 | **Service-Mode** | Ein Alarm beendet den Service-Mode jetzt wirklich. In v4.01a hing das Gerät in der Schleife. |
 | **Port-Register** | Der Test-Pin wird mit einem einzelnen Bit-Befehl umgeschaltet. Vorher schrieb die Hauptschleife das ganze Port-Register neu und konnte die HF direkt nach dem Abschalten durch die Schutzfunktion für bis zu 1 ms wieder einschalten. |
+| **Ausschalten** | HF wird vor der Speichern-Abfrage, dem EEPROM-Schreiben und den Lüftern abgeschaltet, auch beim Fernsteuerbefehl `=P`. |
+| **Lüfter-Hysterese** | Der Lüfter stoppt 2 °C/4 °F unter der Einschalttemperatur. Die seit v1.05 dokumentierte Hysterese war nie umgesetzt, der Lüfter flatterte an der Einschalttemperatur. |
 
 ### Schutz der Tiefpassfilter beim Bandwechsel
 
 | Änderung | Wirkung |
 |---|---|
 | **Kein Relais-Umschalten unter Last** | Bei einem Bandwechsel wird zuerst die HF abgeschaltet. Die Filterrelais schalten frühestens 20 ms nach „HF aus“, wenn die PA-Relais abgefallen sind (auch wenn die Schutzfunktion abgeschaltet hat), und TX bleibt 20 ms gesperrt, bis die Relais eingeschwungen sind. |
+| **Gain-Relais** | Eine Gain-Änderung während des Sendens (UP/DOWN, Fernsteuerung `=G`) wird nach der Aussendung übernommen, die Abschwächer-Relais schalten nicht mehr unter Steuerleistung. |
 | **Frequenz oberhalb des Filters** | Liegt die mit F-Sense gemessene Eingangsfrequenz 2 ms lang über dem gewählten Filter, geht die HF aus, bis das Band korrigiert ist. Das behebt den **O/C-Alarm** aus v4.01a beim ersten Senden nach einem Bandwechsel im F-Sense-Modus, z. B. 40 m → 20 m. Er entstand, weil 20 m durch das 40-m-Filter verstärkt wurde. Wirkt in allen Bandwahl-Modi. |
 | **Frequenz unterhalb des Filters** (F-Sense) | In den ersten 200 ms einer Aussendung: 3 ms unter dem gewählten Filter bedeutet HF aus, bis das Band gemessen ist (z. B. 80 m durch das 20-m-Filter, schlechte Oberwellenunterdrückung). Die Prüfung endet mit der ersten Messung, damit modulierte Signale die Relais nicht rattern lassen. |
-| **Tieferes Band nur bei sauberem Träger** (F-Sense) | F-Sense misst modulierte Signale (Zweiton, Rauschen, SSB) zu tief, z. B. 14 MHz Zweiton als ca. 11 MHz. v4.01a wählte dann zu Beginn der Aussendung das 30-m-Filter. Ein tieferes Band wird jetzt nur gewählt, wenn alle Messwerte innerhalb von ca. 3 % liegen (Tune, CW) oder selbst der höchste Messwert weit unter dem aktuellen Filter liegt (z. B. 20 m → 40 m mit SSB); ein höheres Band weiterhin bei jedem Signal. |
+| **Tieferes Band nur bei sauberem Träger** (F-Sense) | F-Sense misst modulierte Signale (Zweiton, Rauschen, SSB) zu tief, z. B. 14 MHz Zweiton als ca. 11 MHz. v4.01a wählte dann zu Beginn der Aussendung das 30-m-Filter. Ein tieferes Band wird jetzt nur gewählt, wenn alle Messwerte innerhalb von ca. 3 % liegen (Tune, CW) oder selbst der höchste Messwert + 20 % unter dem aktuellen Filter liegt (z. B. 20 m → 40 m mit SSB); das Band ist dann das höchste Amateurfunkband zwischen höchstem Messwert und + 20 %, also nie unterhalb der Sendefrequenz. Ist das Band in einer Aussendung einmal gemessen, wird es nur noch erhöht. Ein höheres Band weiterhin bei jedem Signal. |
 | **Schalter F-Sense QSK** | Neue Menüseite, siehe [unten](#f-sense-qsk). |
 
 ### Bandwahl
@@ -76,7 +85,9 @@ die Einstellung **Beep Tone** für den RS-928 und die Möglichkeit, mit dem aktu
 |---|---|
 | **Empfangs-Überlauf** | Die Empfangsroutine liest jetzt den ganzen UART-Puffer aus, und ein Überlauf wird automatisch zurückgesetzt. In v4.01a konnte der Empfang bei hoher Baudrate (z. B. 115200) nach einem kurzen Stoß dauerhaft ausfallen, während das Senden weiterlief. |
 | **Statuszeile am Stück** | Die Statusantwort (`=R` und Polling) wird komplett formatiert und dann in einem Zug gesendet. Vorher konnten Lücken zwischen den Feldern die Zeile zerteilen, und JUMA_CTRL zeigte dann `???`. Das Format ist unverändert. |
-| **KX2/KX3-Zeitüberschreitung** | Eine unvollständige `FA`-Meldung wird nach der Zeitüberschreitung verworfen. In v4.01a griff die Zeitüberschreitung nie, und ein Meldungsrest konnte sich mit der nächsten Meldung vermischen. |
+| **KX2/KX3-Meldungsreste** | Eine unvollständige `FA`-Meldung wird verworfen, sobald die nächste Meldung beginnt. In v4.01a konnte sich ein Meldungsrest mit der nächsten Meldung vermischen. |
+| **Frequenzprüfung** | Eine `FA`-Frequenz wird nur mit 8, 9 oder 11 Ziffern verwendet. Eine verlorene Ziffer ergab vorher eine 10× zu tiefe Frequenz und ein falsches Filter. |
+| **`=P` ohne Ziffer** | Schaltet jetzt wie dokumentiert ohne Speichern aus. Vorher wurden die Einstellungen gespeichert. |
 
 ### Sonstiges
 
@@ -84,9 +95,9 @@ die Einstellung **Beep Tone** für den RS-928 und die Möglichkeit, mit dem aktu
 - Linker-Skript: Der Programmspeicher endet **unterhalb des Bootloaders** (0x17D00). Das Build-Skript erzeugt keine HEX-Datei, die Daten im Bootloader-Bereich enthält.
 - **EEPROM-Erweiterungsblock** für die neuen Einstellungen, siehe [EEPROM](#eeprom-und-kompatibilität).
 - Service-Menü **Beep Tone**: Töne im sauberen Bereich des RS-928-Summers, siehe [Beep Tone](#beep-tone-service-menü).
-- Startbildschirm: `JUMA PA100 v4.05` / `OH2NLT/7SV DL4JC`. Jedes Release hat eine eigene Versionsnummer,
-  die beim Einschalten angezeigt wird; eine getrennte Build-Nummer gibt es nicht mehr. (Die Test-Builds
-  vor v4.03 hießen v4.02a Build 1–5-DL4JC.)
+- Startbildschirm: `JUMA PA-100D` / `Firmware v5.00`. Die Credits stehen auf der neuen User-Config-Seite
+  **„About“** (letzte Seite, mit UP/DOWN blättern). Jedes Release hat eine eigene Versionsnummer; eine
+  getrennte Build-Nummer gibt es nicht mehr. (Die Test-Builds vor v4.03 hießen v4.02a Build 1–5-DL4JC.)
 
 Die vollständige technische Änderungshistorie steht im Kommentarkopf von `juma-pa100.c` (Abschnitt *DL4JC Modifications*).
 
@@ -94,9 +105,21 @@ Die vollständige technische Änderungshistorie steht im Kommentarkopf von `juma
 
 ## Bedienung – neue Einstellungen
 
+### Einstellungen speichern (OPER lang)
+
+In der normalen Anzeige **OPER** ca. 0,7 s halten: *Save Settings?* erscheint, **BAND+** speichert, **PWR**
+lässt die Einstellungen ungespeichert (sie bleiben aktiv). So lassen sich Gain je Band, Band und
+Auto/Manual speichern, ohne auszuschalten. OPER kurz schaltet wie bisher Oper/Stby um, jetzt beim
+Loslassen. Während des Sendens nicht verfügbar. Die Abfrage beim Ausschalten und beim Verlassen der
+User-Config bleibt unverändert.
+
+### About
+
+User-Config, letzte Seite **„About“**: Firmware-Version und Credits, mit UP/DOWN blättern.
+
 ### F-Sense QSK
 
-User-Config, letzte Seite **„F-Sense QSK“**. Die Seite erscheint nur bei *Auto Band Detect = F-Sense*.
+User-Config, Seite **„F-Sense QSK“** (vor *About*). Die Seite erscheint nur bei *Auto Band Detect = F-Sense*.
 
 Vergleich mit dem F-Sense-Modus der originalen v4.01a:
 
@@ -109,8 +132,9 @@ Vergleich mit dem F-Sense-Modus der originalen v4.01a:
 | **Verzögerung am Anfang jeder Aussendung** | keine | ca. 20–40 ms ohne PA (bei SSB mit leisem Sprechbeginn auch länger) | keine |
 | **Geeignet für** | – | SSB, Digimodes, CW ohne Voll-QSK | CW mit Voll-QSK |
 
-\* Mit Tune/CW oder bei einem großen Schritt nach unten. Nach einem kleinen Schritt nach unten
-(z. B. 20 m → 30 m) mit nur modulierten Signalen bleibt die PA auf dem höheren Filter, siehe
+\* Mit Tune/CW oder mit einem modulierten Signal deutlich unter dem aktuellen Filter. Liegt die neue
+Frequenz nur knapp darunter (z. B. 10,1 MHz Rauschen vom 20-m-Filter aus), bleibt die PA auf dem
+höheren Filter, siehe
 [Bekannte Einschränkungen](#bekannte-einschränkungen).
 
 Faustregel: **Off** lassen, außer bei CW mit Voll-Break-in. Mit **On** nach einem Wechsel auf ein tieferes Band zuerst kurz mit kleiner Leistung tasten.
@@ -262,7 +286,7 @@ ein Programmer (siehe [Wiederherstellung](#wiederherstellung-mit-programmer)).
    stammt aus der Zeit vor der Selbsthaltung, die der Bootloader seit 23.01.2007 hat, siehe `iBL.s` /
    `mini_lcd-trx2.c`.)
 5. Warten, bis *dsPIC6014A detected, firmware version 1.1* erscheint → OK.
-6. *open HEX file* → `firmware/Juma PA-100D v4.05.hex` wählen (liegt auch dem
+6. *open HEX file* → `firmware/Juma PA-100D v5.00.hex` wählen (liegt auch dem
    [neuesten Release](https://github.com/jcmerg/juma-pa100d-firmware/releases/latest) bei).
 7. Nur **„program flash“** darf angehakt sein. **„write data EEPROM“ und „configure registers“ dürfen
    nicht angehakt sein.** Es darf keine Fehlermeldung erscheinen (siehe unten).
@@ -286,7 +310,7 @@ noch die Gerätedatei oder Administratorrechte. Voraussetzung: Python 3 und pyse
 (`pip install pyserial`). Kabel und Prüfung der seriellen Schnittstelle (Schritte 1 und 2) bleiben gleich.
 
 ```
-python3 tools/juma-flash.py --port COM3 "firmware/Juma PA-100D v4.05.hex"
+python3 tools/juma-flash.py --port COM3 "firmware/Juma PA-100D v5.00.hex"
 ```
 
 (macOS/Linux: z. B. `--port /dev/cu.usbserial-XXXX` oder `/dev/ttyUSB0`; ohne `--port` werden die
@@ -429,11 +453,12 @@ nicht getestet.
 | `juma-pa100.h`, `pa100_eeprom.h` | Hardware-Definitionen, EEPROM-Strukturen |
 | `juma-trx2.gld` | Linker-Skript für den Ingenia-Bootloader |
 | `build-xc16.sh` | Build-Skript für XC16 |
-| `firmware/Juma PA-100D v4.05.hex` | Aktuelle Version |
+| `firmware/Juma PA-100D v5.00.hex` | Aktuelle Version |
 | `firmware/Juma PA-100D v4.01a Build 3 (original).hex` | Original v4.01a Build 3 (zum Zurückgehen) |
 | `tools/ingenia/ibl_dspiclist.xml` | Gerätedatei für den Ingenia-Loader |
 | `tools/juma-flash.py` | Serieller Firmware-Loader (Alternative zu Ingenia) |
 | `bootloader/` | Bootloader-Quellcode und HEX; `Bootldr_Juma-PA100_v104.hex` = komplettes Abbild für die Erstinstallation per Programmer (RS-928) |
+| `docs/manual/` | **Bedienungsanleitung v5.00** (PDF, Deutsch und Englisch) mit Markdown-Quellen; `build-manual.py` erzeugt die PDFs (pandoc, weasyprint) |
 | `docs/` | Notizen aus der Original-Firmware (5B4AIY): Build-Protokoll, EEPROM-Einstellungen, Beispielausgaben der seriellen Schnittstelle |
 | `Juma PA-100D.mcp/.mcw/.mcs` | Originales MPLAB-8-Projekt |
 
@@ -442,9 +467,10 @@ nicht getestet.
 ## Bekannte Einschränkungen
 
 - **F-Sense mit modulierten Signalen:** Zweiton, Rauschen und SSB werden zu tief gemessen, die
-  Frequenzseite zeigt eine falsche Frequenz. Ein Wechsel auf ein höheres Band und ein großer Schritt
-  nach unten (z. B. 20 m → 40 m) werden bei jedem Signal erkannt; bei einem kleinen Schritt nach unten
-  (z. B. 20 m → 30 m, 40 m → 80 m) das Band einmal mit **Tune** (oder CW) setzen.
+  Frequenzseite zeigt eine falsche Frequenz. Ein Wechsel auf ein höheres Band wird bei jedem Signal
+  erkannt, ein Schritt nach unten, wenn selbst der höchste Messwert + 20 % unter dem aktuellen Filter
+  liegt (z. B. 20 m → 40 m, 15 m → 20 m mit SSB oder Zweiton). Liegt die neue Frequenz nur knapp unter
+  dem Filter (z. B. 10,1 MHz Rauschen vom 20-m-Filter aus), das Band einmal mit **Tune** (oder CW) setzen.
 - **F-Sense QSK = On:** Nach einem Wechsel auf ein tieferes Band bleiben wenige Millisekunden mit
   schlecht unterdrückten Oberwellen, weil sich die Frequenz erst messen lässt, wenn HF anliegt.
   Siehe [F-Sense QSK](#f-sense-qsk).
