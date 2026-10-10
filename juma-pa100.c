@@ -1664,7 +1664,8 @@ void serial_kx3(void)				// Serial Data Handler
  letter F. If it is not, then we simply do nothing and return.
 
  If it is the letter F, then this is possibly the start of a valid FA data packet, so now we
- insert this character into the buffer, and increment the pointer, and start the message timer.
+ insert this character into the buffer, and increment the pointer. An F always starts a new
+ message, also in the middle of a stale partial one, which is then dumped. (v5.00) DL4JC
 
  When the next character is received the buffer index is now 1, so this letter should be an A.
 
@@ -1672,22 +1673,17 @@ void serial_kx3(void)				// Serial Data Handler
 
  If it is, then this is the start of a valid frequency data packet, so we insert this character
  into the buffer, increment the pointer, and continue. We then check to see whether we have
- reached the end of the buffer or if a time-out has occurred, in which case we simply dump the
- buffer and restart.
+ reached the end of the buffer, in which case we simply dump the buffer and restart.
 
- Assuming we are not at the end of the buffer nor a time-out, eventually we will receive the
- end-of-message character ; and at this point we convert the first buffer entry into a frequency
- and select a band. If the polling timer is non-zero then we set the polled message received flag,
- clear the buffer and start again.
-  
- The KX-3 default baud rate is 4800, and as there are 14 bytes to send, then the minimum
- time is: 10 bits/character (8 + start + stop) * 14 * 1/4800 = 29mSec. So setting the
- time-out value to a generous 200mS should be more than enough to ensure reasonable
- operation but still provide a guard against something going wrong.
+ Assuming we are not at the end of the buffer, eventually we will receive the end-of-message
+ character ; and at this point we check that 8, 9 or 11 digits were received, convert them into a
+ frequency and select a band. If the polling timer is non-zero then we set the polled message
+ received flag, clear the buffer and start again.
 
- At the slowest speed of 1200 baud, the message would take 117mS, so again, there is
- enough margin to ensure that the message can be received, but still protect against
- some communications problem that would cause an incomplete message to be received.
+ Up to v4.05 a 200mS time-out between the characters was meant to dump an incomplete message (it
+ never applied in v4.01a). It is not used any more: a stall of the main loop, e.g. at a save prompt,
+ made the queued characters of a complete message look too old. The restart on F and the digit
+ check protect against incomplete messages instead. (v5.00) DL4JC
 
  The reason for not setting the band to NOT_KNOWN if the message ident is wrong is
  that the amplifier may be 'piggy-backed' onto a serial link that is also being used

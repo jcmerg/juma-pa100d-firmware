@@ -37,7 +37,9 @@ $CC -mcpu=30F6014A -c DataEEPROM.s -o "$OUT/DataEEPROM.o" -Wa,-I"$X/support/dsPI
 # Fixed link order: "$OUT"/*.o is sorted differently on macOS and Linux, which moves the functions and gives a
 # different HEX file. This is the order of the released builds.
 OBJS="$OUT/adc12.o $OUT/DataEEPROM.o $OUT/juma-pa100.o $OUT/lcd-trx2.o $OUT/serial_pa100.o $OUT/serial_test.o $OUT/service.o $OUT/timers_pwm.o $OUT/tmr5delay.o $OUT/traps.o $OUT/uart.o"
-$CC -mcpu=30F6014A $OBJS -o "$OUT/pa100.elf" -Wl,--script=juma-trx2.gld,--heap=500,-Map="$OUT/pa100.map",--report-mem | grep -E 'Total'
+# The linker output goes to a file first: in a pipe, set -e would test the exit status of grep, not of the linker.
+$CC -mcpu=30F6014A $OBJS -o "$OUT/pa100.elf" -Wl,--script=juma-trx2.gld,--heap=500,-Map="$OUT/pa100.map",--report-mem > "$OUT/link.txt"
+grep -E 'Total' "$OUT/link.txt" || true
 $RUN "$X/bin/xc16-bin2hex" "$OUT/pa100.elf"
 # Safety check: nothing may be placed in the boot loader area (PC 0x17D00 - 0x17FFF)
 python3 - "$OUT/pa100.hex" <<'PY'
