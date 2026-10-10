@@ -162,32 +162,33 @@ class Loader:
 
     def connect(self, wait):
         """Send 0x55 until the boot loader answers. A continuous 0x55 stream is a square wave, so the
-        autobaud measurement is correct wherever the boot loader starts. The bytes that follow the
-        detection are answered with NACK and are discarded."""
+        autobaud measurement is correct wherever the boot loader starts. The boot loader answers the
+        detection with one ACK and every further 0x55 with NACK (unknown command), see iBL.s."""
         print("Switch the device off and start its boot loader (PA-100D: press and hold OPER, then press PWR).\n"
               "Waiting ...", flush=True)
         self.ser.reset_input_buffer()
         answered = False
         end = time.monotonic() + wait
         while time.monotonic() < end:
-            # Without pauses: the boot loader only waits a short time for the first edges (approx. 1 s in iBL.s, possibly
-            # less in other builds) and then starts the firmware. A pause between the bursts could fall into this time.
+            # Without pauses: the boot loader only waits approx. 1 s for the edges of its baud rate detection and then
+            # starts the firmware, so the stream may only stop for a short version query.
             self.ser.write(bytes([ACK]) * 16)
             self.ser.flush()
-            if not self.ser.in_waiting:
+            rx = self.ser.read(self.ser.in_waiting) if self.ser.in_waiting else b""
+            # Only ACK or NACK can come from the boot loader. Switching the device on can produce a stray byte (e.g.
+            # 0x00 on a Rowaves PA-100D), which must not stop the stream before the baud rate has been detected.
+            if ACK not in rx and NACK not in rx:
                 continue
-            # Something answered. It may also be the running firmware, e.g. in the serial test mode, so only
-            # a valid version answer counts. Otherwise keep waiting until the device starts its boot loader.
+            # It may also be the running firmware, so only a valid version answer counts.
             answered = True
-            time.sleep(0.2)
+            time.sleep(0.02)
             self.ser.reset_input_buffer()
-            for _ in range(2):
-                self.ser.write(bytes([C_VERSION]))
-                ver = self.read_exact(3)
-                if len(ver) == 3 and ver[2] == ACK:
-                    return ver[0], ver[1]
-                time.sleep(0.1)
+            self.ser.write(bytes([C_VERSION]))
+            ver = self.read_exact(3, timeout=0.3)
+            if len(ver) == 3 and ver[2] == ACK:
+                time.sleep(0.05)
                 self.ser.reset_input_buffer()
+                return ver[0], ver[1]
         if answered:
             raise FlashError("the device answers, but not as the boot loader. Is the firmware still running? "
                              "Otherwise disconnect the power supply and try again, or use a lower baud rate.")
