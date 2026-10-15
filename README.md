@@ -157,6 +157,13 @@ read the status. The serial port then only speaks HR50: the JUMA remote protocol
 and polling are off, and the *Serial Port* and *Polling Interval* pages are hidden. Set *Serial
 Speed* to the speed of the host (the HR50 USB port defaults to 19200).
 
+**Signal levels:** the serial port of the PA-100D uses **RS-232 levels**. The Hardrock-50 and the
+SquareSDR send and receive their control commands at **TTL levels**. To connect the PA to such a TTL
+port (e.g. the control output of the SquareSDR, or a cable made for the HR50 TTL port), put a level
+converter (e.g. a MAX3232 module) in between. Do not connect the PA directly to a TTL port: the
+RS-232 voltages can damage the TTL input, and TTL levels are not reliably detected by the RS-232
+receiver of the PA. A PC with a USB-serial adapter (RS-232) connects directly.
+
 | Command | Function |
 |---|---|
 | `FAxxxxxxxxxxx;` | Frequency in Hz, selects the band. Kenwood `IF…;` data is used the same way. |

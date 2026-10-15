@@ -159,6 +159,14 @@ umschalten und den Status lesen. Der Port spricht dann nur HR50: JUMA-Fernsteuer
 Polling sind aus, die Seiten *Serial Port* und *Polling Interval* werden ausgeblendet. *Serial Speed*
 auf die Geschwindigkeit des Hosts stellen (der USB-Port der HR50 steht ab Werk auf 19200).
 
+**Signalpegel:** Der serielle Port der PA-100D arbeitet mit **RS-232-Pegeln**. Hardrock-50 und
+SquareSDR senden und empfangen ihre Steuerbefehle mit **TTL-Pegeln**. Wird die PA an einen solchen
+TTL-Anschluss angeschlossen (z. B. den Steuerausgang des SquareSDR oder ein Kabel für den TTL-Port
+der HR50), gehört ein Pegelwandler (z. B. ein MAX3232-Modul) dazwischen. Die PA nicht direkt an
+einen TTL-Anschluss legen: Die RS-232-Spannungen können den TTL-Eingang beschädigen, und TTL-Pegel
+erkennt der RS-232-Empfänger der PA nicht zuverlässig. Ein PC mit USB-Seriell-Adapter (RS-232) wird
+direkt angeschlossen.
+
 | Befehl | Funktion |
 |---|---|
 | `FAxxxxxxxxxxx;` | Frequenz in Hz, wählt das Band. Kenwood-`IF…;`-Daten werden genauso ausgewertet. |
