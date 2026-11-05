@@ -2,7 +2,7 @@
 
 <p class="title">JUMA PA-100D<br>Bedienungsanleitung</p>
 
-<p class="sub">Firmware v5.01 (DL4JC) · Oktober 2026</p>
+<p class="sub">Firmware v5.02 (DL4JC) · November 2026</p>
 
 <p class="based">Auf Grundlage der Bedienungsanleitung zur Firmware v4.00a von Adrian Ryan, 5B4AIY
 (Revision 15-DEC-2021). Ursprüngliche Firmware von Juha Niinikoski, OH2NLT, und Matti Hohtola,
@@ -25,7 +25,7 @@ jederzeit zur originalen v4.01a zurückkehren, ohne die Kalibrierung zu verliere
 Die PA-100D ist eine 100-W-Allband-Endstufe (160–10 m). Sie wurde als Partner des JUMA TRX-2
 entwickelt, lässt sich aber mit fast jedem QRP-Transceiver betreiben (Elecraft KX2/KX3, Yaesu
 FT-817/818, Xiegu, Icom IC-705 und andere). Diese Anleitung beschreibt Bedienung und Einrichtung mit
-der **Firmware v5.01**. Sie läuft auf der JUMA PA-100D und auf dem RS-928-Clone.
+der **Firmware v5.02**. Sie läuft auf der JUMA PA-100D und auf dem RS-928-Clone.
 
 ## 1.1 Versionsnummern
 
@@ -81,7 +81,7 @@ länger. Die Kurzreferenz in Kapitel 11 fasst alle Funktionen zusammen.
 - **Einschalten:** PWR kurz drücken. Der Startbildschirm erscheint (wenn *Splash Screen* an ist):
 
   <pre class="lcd">  JUMA PA-100D
-Firmware   v5.01</pre>
+Firmware   v5.02</pre>
 
   Die Endstufe startet immer in **Standby**.
 - **Ausschalten:** PWR halten. Wurde seit dem letzten Speichern ein Gain, das Band (Manual) oder
@@ -163,6 +163,7 @@ Obere Zeile: Balkenanzeige und gewählter Messwert. Untere Zeile: Gain (G1–G4)
 | `STBY` | Standby |
 | `OPER` | Operate, Empfang |
 | `TX` | Operate, Senden |
+| `tx` | KEY aktiv, HF aber noch gesperrt: Band noch nicht gemessen (F-Sense, QSK Off), Relais schwingen nach einem Bandwechsel ein, oder Eingangsfrequenz über dem gewählten Filter |
 | `Err` | KEY aktiv, aber Band unbekannt oder außerhalb – TX gesperrt |
 | `SWR`, `O/C`, `TEMP`, `Hi-V`, `Lo-V`, `Batt` | Alarm (blinkt, Kapitel 9) |
 
@@ -203,7 +204,7 @@ Werkseinstellung: **F-Sense**
 | **F-Sense** | Frequenz des HF-Steuersignals | Nur HF und PTT nötig; Kapitel 6.2 |
 | **FT817/818** | Bandspannung an der BAND-Buchse (FT-817/818) | |
 | **Xiegu** | Bandspannung des Xiegu-ACC-Ports (230-mV-Stufen), auch Brick2/3, SquareSDR | Kapitel 8.4 |
-| **Manual** | Nur BAND+/BAND− | **Keinerlei Schutz** – ein falsches Band kann Filter oder Transistoren zerstören. Nur als letzte Möglichkeit. |
+| **Manual** | Nur BAND+/BAND− | **Fast kein Schutz** – nur eine Eingangsfrequenz über dem gewählten Filter schaltet die HF ab. Ein zu tief eingestelltes Band (z. B. 80 m auf dem 20-m-Filter) wird nicht erkannt und kann Filter oder Transistoren zerstören. Nur als letzte Möglichkeit. |
 
 Reihenfolge im Menü: Yaesu CAT → KX2/KX3 → HR50 → Juma-TRX2 → F-Sense → FT817/818 → Xiegu → Manual.
 
@@ -325,7 +326,7 @@ Die letzte Seite. Firmware-Version und Credits; mit UP/DOWN blättern:
 
 | Zeile | |
 |---|---|
-| `Firmware   v5.01` | Installierte Firmware-Version |
+| `Firmware   v5.02` | Installierte Firmware-Version |
 | `OH2NLT  Original` | Juha Niinikoski – ursprüngliche Firmware |
 | `OH7SV       JUMA` | Matti Hohtola – JUMA |
 | `5B4AIY  to 4.01a` | Adrian Ryan – Erweiterungen und Pflege bis v4.01a |
@@ -391,7 +392,7 @@ sie zu niedrig.
 Aus dem ausgeschalteten Zustand **PWR** halten, bis ein Ton kommt und
 
 <pre class="lcd">  Calibration
-  Mode  v5.01</pre>
+  Mode  v5.02</pre>
 
 erscheint. PWR loslassen. Seiten: DISPLAY kurz/halten vorwärts, PWR kurz/halten rückwärts. Werte:
 UP/DOWN. **OPER** öffnet die Speichern-Abfrage (BAND+ speichert, PWR stellt die vorherige
@@ -468,7 +469,8 @@ wird sofort vorgespielt.
 
 Mittelt Leistungs- und SWR-Messung über 1–16 Werte (je ca. 4 ms). Der SWR-Schutz im Interrupt
 mittelt über mindestens 8 ms und beginnt 20 ms nach Anfang der Aussendung, sodass normales
-Relaisschalten keine Fehlauslösung bewirkt. Auf **1** lassen, außer eine nachgeschaltete Endstufe
+Relaisschalten keine Fehlauslösung bewirkt. Die erste SWR-Entscheidung fällt damit bei 1 Wert
+ca. 28 ms nach TX-Beginn, bei 16 Werten nach ca. 84 ms. Auf **1** lassen, außer eine nachgeschaltete Endstufe
 oder getrennte RX/TX-Antennen erzeugen kurze SWR-Alarme; mehr als 6–10 Werte deuten auf ein anderes
 Problem.
 
@@ -673,9 +675,9 @@ Anleitung: README im Repository (github.com/jcmerg/juma-pa100d-firmware).
 1. Zuerst die serielle Verbindung prüfen: *Serial Speed* 115200, *Serial Port* Test, mehrmals `H` und
    `F` eingeben – die Ausgabe muss fehlerfrei sein. Die Ausgabe von `E` aufbewahren.
 2. Ausschalten. **OPER halten und PWR drücken**: Der Bootloader startet.
-3. `firmware/Juma PA-100D v5.01.hex` laden – nur den Programmspeicher, **niemals** das Daten-EEPROM oder
+3. `firmware/Juma PA-100D v5.02.hex` laden – nur den Programmspeicher, **niemals** das Daten-EEPROM oder
    die Konfigurationsregister. Mit `juma-flash.py`:
-   `python3 tools/juma-flash.py --port COM3 "firmware/Juma PA-100D v5.01.hex"`
+   `python3 tools/juma-flash.py --port COM3 "firmware/Juma PA-100D v5.02.hex"`
 4. Stromversorgung trennen (PWR funktioniert im Bootloader nicht), dann normal einschalten.
 
 **EEPROM:** Die originalen Konfigurations- und Kalibrierblöcke sind unverändert – kein

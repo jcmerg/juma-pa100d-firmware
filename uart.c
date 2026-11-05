@@ -128,9 +128,13 @@ void SetUSART1baud(int baud_sel)
 	}
 
 // Print character
+// The wait is limited, so that a UART that is not running (e.g. in a trap handler before InitUSART1()) cannot hang the
+// firmware. 0xFFFF loops are far longer than one character at 1200 Baud (8.3mS). DL4JC
 void putch(unsigned char c)
 	{
-	while(U1STAbits.UTXBF == 1);		// Wait here if TX FIFO full
+	unsigned int guard = 0xFFFF;
+
+	while((U1STAbits.UTXBF == 1) && --guard);	// Wait here if TX FIFO full
 	U1TXREG = (unsigned int)c;			// TX register is 16-bits long
 	}
 

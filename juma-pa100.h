@@ -6,8 +6,8 @@
 #include <p30F6014A.h>
 
 // Version Data
-#define VERSION				"v5.01"			// One version number per release, shown on the start-up screen (max. 6 characters)
-#define BUILD_DATE			"10/OCT/2026"
+#define VERSION				"v5.02"			// One version number per release, shown on the start-up screen (max. 6 characters)
+#define BUILD_DATE			"05/NOV/2026"
 
 // Macro Definitions
 #define lcd_spc(count)		set_ch_bits(' ', count)		// Print spaces
@@ -298,7 +298,6 @@
 // Channel definitions
 #define ID_CUR				9			// PA Drain current channel
 #define BATT_CH				10			// Battery channel
-#define B_TYPE				11			// Board type
 #define Y_817				11			// Yaesu 817 band data
 #define REV_PWR				12			// Reverse power channel
 #define FWD_PWR				13			// Forward power

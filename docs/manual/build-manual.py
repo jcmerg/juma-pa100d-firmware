@@ -4,8 +4,8 @@
 import os, re, subprocess, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DOCS = [("manual-en.md", "JUMA PA-100D Operating Manual v5.01.pdf", "en", "JUMA PA-100D Operating Manual · Firmware v5.01"),
-        ("manual-de.md", "JUMA PA-100D Bedienungsanleitung v5.01.pdf", "de", "JUMA PA-100D Bedienungsanleitung · Firmware v5.01")]
+DOCS = [("manual-en.md", "JUMA PA-100D Operating Manual v5.02.pdf", "en", "JUMA PA-100D Operating Manual · Firmware v5.02"),
+        ("manual-de.md", "JUMA PA-100D Bedienungsanleitung v5.02.pdf", "de", "JUMA PA-100D Bedienungsanleitung · Firmware v5.02")]
 
 def run(args, inp=None):
     return subprocess.run(args, input=inp, capture_output=True, text=True, check=True, cwd=HERE).stdout

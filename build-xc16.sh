@@ -28,17 +28,22 @@ NAME="firmware/Juma PA-100D $VERSION.hex"
 mkdir -p $OUT firmware
 # No optimisation (-O0), on purpose: the timing of the firmware was measured and tuned at -O0 (main loop approx. 4mS,
 # loop based counters and delays, see the loop timing notes in juma-pa100.c), as with the original C30 build. The
-# variables shared with the interrupts are volatile, so -O1 would be possible, but only after a complete test on the
-# amplifier (band select in every mode, F-Sense, TX/SWR/filter protection, serial modes, service menu, tones).
+# flags and counters shared with the interrupts are volatile, the settings structures (eeprom, cal, ext) that
+# tx_guard() reads in the 1 mS interrupt are not. -O1 would first need those reads made volatile, and then a complete
+# test on the amplifier (band select in every mode, F-Sense, TX/SWR/filter protection, serial modes, service menu, tones).
+# The calculations assume the XC16 default of a 32-bit double (no -fno-short-double).
 for f in adc12 juma-pa100 lcd-trx2 serial_pa100 serial_test service timers_pwm tmr5delay traps uart; do
-	$CC -mcpu=30F6014A -x c -c "$f.c" -o "$OUT/$f.o" -O0 -g -Wall
+	$CC -mcpu=30F6014A -x c -c "$f.c" -o "$OUT/$f.o" -O0 -g -Wall -Wextra
 done
 $CC -mcpu=30F6014A -c DataEEPROM.s -o "$OUT/DataEEPROM.o" -Wa,-I"$X/support/dsPIC30F/inc"
 # Fixed link order: "$OUT"/*.o is sorted differently on macOS and Linux, which moves the functions and gives a
 # different HEX file. This is the order of the released builds.
 OBJS="$OUT/adc12.o $OUT/DataEEPROM.o $OUT/juma-pa100.o $OUT/lcd-trx2.o $OUT/serial_pa100.o $OUT/serial_test.o $OUT/service.o $OUT/timers_pwm.o $OUT/tmr5delay.o $OUT/traps.o $OUT/uart.o"
 # The linker output goes to a file first: in a pipe, set -e would test the exit status of grep, not of the linker.
-$CC -mcpu=30F6014A $OBJS -o "$OUT/pa100.elf" -Wl,--script=juma-trx2.gld,--heap=500,-Map="$OUT/pa100.map",--report-mem > "$OUT/link.txt"
+# The linker warnings about the unspecified CRT0/CRT1/CRT_STARTMODE files are left out of the output: the defaults are
+# correct, and the script is shared with the MPLAB 8 / C30 project, whose linker does not know these commands.
+$CC -mcpu=30F6014A $OBJS -o "$OUT/pa100.elf" -Wl,--script=juma-trx2.gld,--heap=500,-Map="$OUT/pa100.map",--report-mem > "$OUT/link.txt" 2> "$OUT/link-err.txt" || { cat "$OUT/link-err.txt" >&2; exit 1; }
+grep -v -E 'did not specify CRT(0_STARTUP|1_STARTUP|_STARTMODE) file' "$OUT/link-err.txt" >&2 || true
 grep -E 'Total' "$OUT/link.txt" || true
 $RUN "$X/bin/xc16-bin2hex" "$OUT/pa100.elf"
 # Safety check: nothing may be placed in the boot loader area (PC 0x17D00 - 0x17FFF)

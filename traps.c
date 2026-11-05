@@ -25,6 +25,7 @@ void safe_state(void)
 	FAN2 = 1;
 	}
 
+// The LCD message is shown before the serial output: putch() waits for the UART, which may not be running yet. DL4JC
 void lcd_error_message(int err)		// Moved to here to avoid forward references - 5B4AIY
 	{
 	clear_lcd();
@@ -54,7 +55,10 @@ void lcd_error_message(int err)		// Moved to here to avoid forward references - 
 			lcd_putst(" Unknown Error! ");
 		break;
 		}
+	}
 
+void trap_halt(void)
+	{
 	for(;;)
 		{
 		if(PWR_SW == 1)				// Try power-off if PWR button pressed
@@ -67,6 +71,7 @@ void __attribute__((interrupt, auto_psv)) _OscillatorFail(void)
 	int x;
 
 	safe_state();
+	lcd_error_message(0);
 //	DI();
  	U1BRG = ((8000000 / 16) / 9600) - 1;		// Try to set set UART1 baud rate to 9600
 
@@ -77,8 +82,7 @@ void __attribute__((interrupt, auto_psv)) _OscillatorFail(void)
 	printf("\n\rTRAP: Oscillator Error\n\r");	// May not print correctly if clock is gone
 	printf("OSCCON 0x%X\n\r", OSCCON);
 
-	lcd_error_message(0);
-	for(;;);
+	trap_halt();
 	}
 
 void __attribute__((interrupt, auto_psv)) _AddressError(void)
@@ -103,6 +107,7 @@ void __attribute__((interrupt, auto_psv)) _AddressError(void)
 	asm("mov w14, _w14");
 	asm("mov w15, _w15");
 	safe_state();
+	lcd_error_message(1);
 
 	printf("\n\rTRAP: Address Error\n\r");
 
@@ -123,32 +128,33 @@ void __attribute__((interrupt, auto_psv)) _AddressError(void)
 	printf("W14 0x%X\n\r", w14);
 	printf("W15 0x%X\n\r", w15);
 
-	lcd_error_message(1);
-	for(;;);
+	trap_halt();
 	}
 
 void __attribute__((interrupt, auto_psv)) _StackError(void)
 	{
 //	DI();
 	asm("mov w15, _w15");
-	asm("mov #0x900, w15");			// New temporary stack from hat
+// New temporary stack at the start of the stack area: the old stack is not needed any more, as the handler never
+// returns. Previously 0x900, which is inside the static data (.nbss/.ndata), so every push overwrote variables. DL4JC
+	asm("mov #__SP_init, w15");
 	safe_state();
+	lcd_error_message(2);
 
 	printf("\n\rTRAP: Stack Error\n\r");
 	printf("W15 0x%X\n\r", w15);
 
-	lcd_error_message(2);
-	for(;;);
+	trap_halt();
 	}
 
 void __attribute__((interrupt, auto_psv)) _MathError(void)
 	{
 	safe_state();
+	lcd_error_message(3);
 //	DI();
 	printf("\n\rTRAP: Math Error\n\r");
 
-	lcd_error_message(3);
-	for(;;);
+	trap_halt();
 	}
 
 void __attribute__((interrupt, auto_psv)) _DefaultInterrupt(void)
@@ -156,9 +162,9 @@ void __attribute__((interrupt, auto_psv)) _DefaultInterrupt(void)
 	safe_state();
 	_INT4IE = 0;
 	_DCIIE = 0;
+	lcd_error_message(4);
 	printf("\n\rTRAP: Spurious Interrupt Error\n\r");
 
-	lcd_error_message(4);
-	for(;;);
+	trap_halt();
 	}
 

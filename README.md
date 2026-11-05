@@ -1,4 +1,4 @@
-# JUMA PA-100D Firmware – v5.01 (DL4JC)
+# JUMA PA-100D Firmware – v5.02 (DL4JC)
 
 [Deutsch](README.de.md) | English
 
@@ -37,7 +37,7 @@ work without the Windows Ingenia loader, with [`juma-flash.py`](#alternative-jum
 
 ---
 
-**Operating manual:** [English (PDF)](docs/manual/JUMA%20PA-100D%20Operating%20Manual%20v5.01.pdf) · [German (PDF)](docs/manual/JUMA%20PA-100D%20Bedienungsanleitung%20v5.01.pdf) – complete operation, setup and calibration with v5.01.
+**Operating manual:** [English (PDF)](docs/manual/JUMA%20PA-100D%20Operating%20Manual%20v5.02.pdf) · [German (PDF)](docs/manual/JUMA%20PA-100D%20Bedienungsanleitung%20v5.02.pdf) – complete operation, setup and calibration with v5.02.
 
 ## What's new
 
@@ -47,11 +47,13 @@ work without the Windows Ingenia loader, with [`juma-flash.py`](#alternative-jum
 |---|---|
 | **Protection runs in the 1 ms interrupt** (`tx_guard()` in `timers_pwm.c`) | In v4.01a all protection was in the main loop and stopped whenever the main loop waited, e.g. while a button was held, at the save prompt or during serial test commands. TX stayed on in the meantime. |
 | **KEY release** | RF off 2 ms after KEY becomes inactive, wherever the main loop is. |
-| **SWR in the interrupt** | The A-D conversions now run in the 1 ms interrupt. The SWR is averaged over *Power Averaging* × 4 ms (at least 8 ms) and tested 20 ms after TX starts, which gives fast and reliable shutdown without nuisance trips. |
+| **SWR in the interrupt** | The A-D conversions now run in the 1 ms interrupt. The SWR is averaged over *Power Averaging* × 4 ms (at least 8 ms), starting 20 ms after TX starts: the first decision is made approx. 28 ms after TX starts with *Power Averaging* 1, approx. 84 ms with 16. This gives fast and reliable shutdown without nuisance trips. |
 | **Main loop watchdog** | RF off if the main loop has not run for 2 s. |
 | **Over-current in the interrupt** | The over-current latch of the PA board is read every millisecond and turns RF off at once, also while the main loop waits (e.g. at a save prompt). |
 | **User configuration mode** | TX_ON is forced off. In v4.01a it stayed in the state it had when the menu was entered. |
-| **Trap handlers** | On a processor fault (address, stack or math trap) the RF is turned off and the fan is switched on before anything else. |
+| **Trap handlers** | On a processor fault (address, stack or math trap) the RF is turned off and the fan is switched on before anything else. The error message appears on the LCD first, then on the serial port. The stack trap no longer overwrites variables with its temporary stack (also in v4.01a). |
+| **TX enable** | The main loop no longer enables TX in the same cycle in which the interrupt detected an SWR trip or the over-current latch is set. |
+| **Display `tx`** | `TX` is only shown while RF is on. `tx` (lower case) means KEY is active but RF is still held off (F-Sense measurement with QSK Off, relays settling, input frequency above the filter). |
 | **Service mode** | An alarm now really exits the service mode. In v4.01a the device hung in the loop. |
 | **Port register** | The timing test pin is toggled with a single bit instruction. Previously the main loop rewrote the whole port register, which could switch RF on again for up to 1 ms just after the protection had switched it off. |
 | **Power off** | RF is turned off before the save prompt, the EEPROM write and the fans, also with the remote command `=P`. |
@@ -90,11 +92,12 @@ work without the Windows Ingenia loader, with [`juma-flash.py`](#alternative-jum
 
 ### Other
 
-- Builds with **MPLAB XC16 v2.10**, no compiler warnings. The configuration bits are identical to the original HEX file. The C30 project files are still included.
+- Builds with **MPLAB XC16 v2.10**, no compiler warnings. The configuration bits have the same values as in the original HEX file (FOSC, FWDT, FBORPOR; the unused FBS/FSS/FGS words are left unprogrammed and read 0xFFFF, as programmed there). The C30 project files are still included.
+- Settings read from the EEPROM are kept within the menu ranges. Leaving the service menu restores the power meter units (Watts/dBm), which previously were saved as Watts with the next configuration save. Start-up diagnostics on the serial port are only sent in the Serial Test mode.
 - Linker script: program memory ends **below the boot loader** (0x17D00). The build script refuses to produce a HEX file containing data in the boot loader area.
 - **EEPROM extension block** for the new settings, see [EEPROM](#eeprom-and-compatibility).
 - Service menu **Beep Tone**: tones in the clean range of the RS-928 buzzer, see [Beep Tone](#beep-tone-service-menu).
-- Start-up screen: `JUMA PA-100D` / `Firmware v5.01`. The credits are on the new user configuration
+- Start-up screen: `JUMA PA-100D` / `Firmware v5.02`. The credits are on the new user configuration
   page **"About"** (the last page, UP/DOWN scrolls). Every release has its own version number; there
   is no separate build number any more. (The test builds before v4.03 were called v4.02a Build
   1–5-DL4JC.)
@@ -285,7 +288,7 @@ programmer (see [Recovery](#recovery-with-a-programmer)).
    (The note "keep PWR pressed" in the old TRX-2 instructions predates the power latch, which the
    boot loader has had since 23.01.2007, see `iBL.s` / `mini_lcd-trx2.c`.)
 5. Wait until *dsPIC6014A detected, firmware version 1.1* appears → OK.
-6. *open HEX file* → select `firmware/Juma PA-100D v5.01.hex` (also attached to the
+6. *open HEX file* → select `firmware/Juma PA-100D v5.02.hex` (also attached to the
    [latest release](https://github.com/jcmerg/juma-pa100d-firmware/releases/latest)).
 7. Only **"program flash"** may be ticked. **"write data EEPROM" and "configure registers" must not
    be ticked.** There must be no error message (see below).
@@ -309,7 +312,7 @@ administrator rights. Requirements: Python 3 and pyserial (`pip install pyserial
 serial port check (steps 1 and 2) are the same.
 
 ```
-python3 tools/juma-flash.py --port COM3 "firmware/Juma PA-100D v5.01.hex"
+python3 tools/juma-flash.py --port COM3 "firmware/Juma PA-100D v5.02.hex"
 ```
 
 (macOS/Linux: e.g. `--port /dev/cu.usbserial-XXXX` or `/dev/ttyUSB0`; without `--port` the available
@@ -450,12 +453,12 @@ this version.
 | `juma-pa100.h`, `pa100_eeprom.h` | Hardware definitions, EEPROM structures |
 | `juma-trx2.gld` | Linker script for the Ingenia boot loader |
 | `build-xc16.sh` | Build script for XC16 |
-| `firmware/Juma PA-100D v5.01.hex` | Current version |
+| `firmware/Juma PA-100D v5.02.hex` | Current version |
 | `firmware/Juma PA-100D v4.01a Build 3 (original).hex` | Original v4.01a Build 3 (to go back) |
 | `tools/ingenia/ibl_dspiclist.xml` | Device file for the Ingenia loader |
 | `tools/juma-flash.py` | Serial firmware loader (alternative to Ingenia) |
 | `bootloader/` | Boot loader source and HEX; `Bootldr_Juma-PA100_v104.hex` = complete image for a first installation with a programmer (RS-928) |
-| `docs/manual/` | **Operating manual v5.01** (PDF, English and German) with Markdown sources; `build-manual.py` builds the PDFs (pandoc, weasyprint) |
+| `docs/manual/` | **Operating manual v5.02** (PDF, English and German) with Markdown sources; `build-manual.py` builds the PDFs (pandoc, weasyprint) |
 | `docs/` | Notes from the original firmware (5B4AIY): build record, EEPROM settings, example outputs of the serial port |
 | `Juma PA-100D.mcp/.mcw/.mcs` | Original MPLAB 8 project |
 

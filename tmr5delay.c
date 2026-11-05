@@ -11,10 +11,10 @@
 
 #include "juma-pa100.h"
 
-void us_delay(unsigned int dly)
+static void tmr5_wait(unsigned int cycles)
 	{
 	TMR5 = 0;							// Reset timer
-	PR5 = dly * DLYCONST;				// Calculate delay
+	PR5 = cycles;						// Delay in instruction cycles
 	IFS1bits.T5IF = 0;					// Clear flags
 	T5CONbits.TON = 1;					// Start delay
 
@@ -23,10 +23,16 @@ void us_delay(unsigned int dly)
 	T5CONbits.TON = 0;					// Timer off and leave
 	}
 
+// DLYCONST is rounded up (8 cycles = 1.085uS), so that the LCD timing is never shorter than specified.
+void us_delay(unsigned int dly)
+	{
+	tmr5_wait(dly * DLYCONST);			// Calculate delay
+	}
+
 // Millisecond delay
-// Maximum delay 65535ms
+// Maximum delay 65535ms. Previously us_delay(1000), which with the rounded up DLYCONST took 1.085mS. DL4JC
 void ms_delay(unsigned int dly)
 	{
-	while(dly--) us_delay(1000);		// 1ms delay
+	while(dly--) tmr5_wait((unsigned int)(FCY / 1000UL));	// 1ms delay
 	}
 

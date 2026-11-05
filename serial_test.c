@@ -52,6 +52,7 @@ extern const char *c_or_f[];
 extern const char *f_sense[];
 extern const char *band_units[];
 extern const char *on_off[];
+extern const char *rs232_mode_msg[];
 extern const char *amp_state[];
 extern const char *band_select[];
 extern const char *bs_txt[];
@@ -452,7 +453,7 @@ void serial_test(void)
 				(Poll_Time)
 					? printf("%-d Seconds", Poll_Time)
 					: printf("Off");
-				printf("\n\rRS-232 Port Mode       : Test Mode\n\r");
+				printf("\n\rRS-232 Port Mode       : %s\n\r", rs232_mode_msg[Serial_Test_Mode]);
 				printf("RS-232 Port Speed      : %-d00 Baud\n\r", br_txt[eeprom.defval.br]);
 				printf("LCD Backlighting       : %-4d\n\r", eeprom.defval.back_light);
 				printf("LCD Contrast           : %-4d\n\r", eeprom.defval.contrast);

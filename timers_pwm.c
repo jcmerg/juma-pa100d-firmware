@@ -27,9 +27,7 @@
 extern const unsigned int band_limits[];	// Band limits defined in the main
 extern volatile unsigned int alarms;	// Alarm flag
 extern volatile int loop_ctr;		// Alarm blink counter
-extern int dsp_alarm;				// Alarm message display flag. Set in display_alarms()
 extern volatile int pa_state;
-extern int beep_flag;
 extern volatile int rep_dly;			// UP/DOWN button auto-repeat timer
 extern volatile long input_freq;
 
@@ -49,7 +47,6 @@ volatile unsigned int fs_max = 0;
 volatile int freq_ctr;				// Input frequency sample averaging counter
 
 static volatile unsigned int tone_counter;	// Beep tone length (ms)
-static volatile unsigned int busy_counter;	// Tone generator busy(ms), busy if != 0
 static volatile int last_cycle;		// For click-less end trick
 
 // Encoder Simulator
@@ -347,7 +344,7 @@ void tone_on(int tone)				// Set tone, set value = 7,5MHz / tone(Hz) * 2
 
 void beep(int tone, int duration)
 	{
-	if(busy_counter == 0 && duration > 0)	// Start tone only if tone generator free & duration specified
+	if(duration > 0)				// Start tone only if a duration is specified. A new tone replaces a running one.
 		{
 		tone_counter = duration;	// Set tone length
 		tone_on((Beep_Tone == 1) ? rs928_tone(tone) : tone);	// Set tone pitch & start play

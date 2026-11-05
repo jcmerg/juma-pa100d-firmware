@@ -45,6 +45,8 @@ extern void ms_delay(unsigned int);
 // External Data
 extern char lcdpbuff[];		// General purpose LCD display buffer
 
+#define LCD_GUARD	2000		// Maximum busy flag polls, each at least 2uS: >= 4mS, the longest command takes 1.64mS
+
 // Local Data
 const char init_lcd[] = {				// Indexed by: local variable i in initlcd() function
 						0x38,			// LCD reset, 8-bit interface, 1-line, 5*7 font
@@ -101,6 +103,7 @@ void clk_lcd(unsigned char ldata)		// Set data & clock both LCD controllers
 void wait_lcd_rdy(void)					// Wait until LCD module is ready
 	{
 	unsigned int busy;					// LCD Busy flag
+	unsigned int guard = LCD_GUARD;		// A missing or defective LCD must not hang the firmware. DL4JC
 
 	__asm__ volatile ("disi #4");		// Protect IRQ tone output to RD1 I/O
 	LCD_TRIS |= LCD_MASK;				// Make data port input, LCD bus direction bits = 1
@@ -113,7 +116,7 @@ void wait_lcd_rdy(void)					// Wait until LCD module is ready
 		us_delay(1);					// Provides the minimum setup delay from LCD_E Lo to Hi to read data.
 		busy = LCD_BUS & LCD_BUSY_FLAG;	// Read data from I/O port pins and extract busy flag
 		LCD_E = 0;
-		} while (busy);					// Test for busy
+		} while (busy && --guard);		// Test for busy
 
 	LCD_RW = 0;
 	LCD_RS = 1;
@@ -426,6 +429,9 @@ void draw_s_meter(int len)
 
 	if(len > MAX_GRAPH)				// First ensure the display length is correct.
 		len = MAX_GRAPH;
+
+	if(len < 0)						// Below the scale, e.g. a voltage below the under-voltage trip, or below 32F.
+		len = 0;					// Otherwise a negative partial block was sent to the LCD as a character. DL4JC
 
 	whole = len / FONT_W;			// Calculate number of fully-filled blocks.
 	part = len % FONT_W;			// Calculate the size of the partial block.

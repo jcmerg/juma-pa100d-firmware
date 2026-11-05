@@ -1,4 +1,4 @@
-# JUMA PA-100D Firmware – v5.01 (DL4JC)
+# JUMA PA-100D Firmware – v5.02 (DL4JC)
 
 Deutsch | [English](README.md)
 
@@ -38,7 +38,7 @@ die Einstellung **Beep Tone** für den RS-928 und die Möglichkeit, mit dem aktu
 
 ---
 
-**Bedienungsanleitung:** [Deutsch (PDF)](docs/manual/JUMA%20PA-100D%20Bedienungsanleitung%20v5.01.pdf) · [Englisch (PDF)](docs/manual/JUMA%20PA-100D%20Operating%20Manual%20v5.01.pdf) – vollständige Bedienung, Einrichtung und Kalibrierung mit v5.01.
+**Bedienungsanleitung:** [Deutsch (PDF)](docs/manual/JUMA%20PA-100D%20Bedienungsanleitung%20v5.02.pdf) · [Englisch (PDF)](docs/manual/JUMA%20PA-100D%20Operating%20Manual%20v5.02.pdf) – vollständige Bedienung, Einrichtung und Kalibrierung mit v5.02.
 
 ## Neuerungen
 
@@ -48,11 +48,13 @@ die Einstellung **Beep Tone** für den RS-928 und die Möglichkeit, mit dem aktu
 |---|---|
 | **Schutz läuft im 1-ms-Interrupt** (`tx_guard()` in `timers_pwm.c`) | In v4.01a lag der gesamte Schutz in der Hauptschleife und stand still, sobald diese wartete, z. B. bei gedrückter Taste, bei der Speicherabfrage oder bei Serial-Test-Befehlen. TX blieb dabei eingeschaltet. |
 | **KEY losgelassen** | HF aus 2 ms nachdem KEY inaktiv wird, egal wo die Hauptschleife gerade steht. |
-| **SWR im Interrupt** | Die ADC-Messungen laufen jetzt im 1-ms-Interrupt. Das SWR wird über *Power Averaging* × 4 ms gemittelt (mindestens 8 ms) und 20 ms nach TX-Beginn geprüft. Das schaltet schnell und sicher ab, ohne Fehlauslösungen. |
+| **SWR im Interrupt** | Die ADC-Messungen laufen jetzt im 1-ms-Interrupt. Das SWR wird über *Power Averaging* × 4 ms gemittelt (mindestens 8 ms), beginnend 20 ms nach TX-Beginn: Die erste Entscheidung fällt bei *Power Averaging* 1 ca. 28 ms nach TX-Beginn, bei 16 nach ca. 84 ms. Das schaltet schnell und sicher ab, ohne Fehlauslösungen. |
 | **Watchdog der Hauptschleife** | HF aus, wenn die Hauptschleife 2 s lang nicht gelaufen ist. |
 | **Überstrom im Interrupt** | Der Überstrom-Latch der PA-Platine wird jede Millisekunde gelesen und schaltet HF sofort ab, auch wenn die Hauptschleife wartet (z. B. bei einer Speichern-Abfrage). |
 | **User-Config-Menü** | TX_ON wird zwangsweise abgeschaltet. In v4.01a blieb es in dem Zustand, den es beim Betreten des Menüs hatte. |
-| **Trap-Handler** | Bei einem Prozessorfehler (Address-, Stack- oder Math-Trap) wird zuerst die HF abgeschaltet und der Lüfter eingeschaltet. |
+| **Trap-Handler** | Bei einem Prozessorfehler (Address-, Stack- oder Math-Trap) wird zuerst die HF abgeschaltet und der Lüfter eingeschaltet. Die Fehlermeldung erscheint zuerst auf dem LCD, dann auf der seriellen Schnittstelle. Der Stack-Trap überschreibt mit seinem Ersatz-Stack keine Variablen mehr (auch in v4.01a). |
+| **TX-Freigabe** | Die Hauptschleife gibt TX nicht mehr im selben Durchlauf frei, in dem der Interrupt einen SWR-Trip erkannt hat oder der Überstrom-Latch gesetzt ist. |
+| **Anzeige `tx`** | `TX` erscheint nur, solange die HF eingeschaltet ist. `tx` (klein) heißt: KEY aktiv, HF aber noch gesperrt (F-Sense-Messung bei QSK Off, Relais schwingen ein, Eingangsfrequenz über dem Filter). |
 | **Service-Mode** | Ein Alarm beendet den Service-Mode jetzt wirklich. In v4.01a hing das Gerät in der Schleife. |
 | **Port-Register** | Der Test-Pin wird mit einem einzelnen Bit-Befehl umgeschaltet. Vorher schrieb die Hauptschleife das ganze Port-Register neu und konnte die HF direkt nach dem Abschalten durch die Schutzfunktion für bis zu 1 ms wieder einschalten. |
 | **Ausschalten** | HF wird vor der Speichern-Abfrage, dem EEPROM-Schreiben und den Lüftern abgeschaltet, auch beim Fernsteuerbefehl `=P`. |
@@ -91,11 +93,12 @@ die Einstellung **Beep Tone** für den RS-928 und die Möglichkeit, mit dem aktu
 
 ### Sonstiges
 
-- Baut mit **MPLAB XC16 v2.10** ohne Compiler-Warnungen. Die Konfigurationsbits sind identisch mit dem Original-HEX. Die C30-Projektdateien sind weiterhin enthalten.
+- Baut mit **MPLAB XC16 v2.10** ohne Compiler-Warnungen. Die Konfigurationsbits haben dieselben Werte wie im Original-HEX (FOSC, FWDT, FBORPOR; die unbenutzten Wörter FBS/FSS/FGS bleiben unprogrammiert und lesen 0xFFFF, wie dort programmiert). Die C30-Projektdateien sind weiterhin enthalten.
+- Aus dem EEPROM gelesene Einstellungen werden auf die Menü-Bereiche begrenzt. Beim Verlassen des Service-Menüs wird die Leistungsanzeige (Watt/dBm) wiederhergestellt; vorher wurde beim nächsten Speichern der Konfiguration Watt gespeichert. Start-Diagnosen auf der seriellen Schnittstelle nur noch im Serial-Test-Modus.
 - Linker-Skript: Der Programmspeicher endet **unterhalb des Bootloaders** (0x17D00). Das Build-Skript erzeugt keine HEX-Datei, die Daten im Bootloader-Bereich enthält.
 - **EEPROM-Erweiterungsblock** für die neuen Einstellungen, siehe [EEPROM](#eeprom-und-kompatibilität).
 - Service-Menü **Beep Tone**: Töne im sauberen Bereich des RS-928-Summers, siehe [Beep Tone](#beep-tone-service-menü).
-- Startbildschirm: `JUMA PA-100D` / `Firmware v5.01`. Die Credits stehen auf der neuen User-Config-Seite
+- Startbildschirm: `JUMA PA-100D` / `Firmware v5.02`. Die Credits stehen auf der neuen User-Config-Seite
   **„About“** (letzte Seite, mit UP/DOWN blättern). Jedes Release hat eine eigene Versionsnummer; eine
   getrennte Build-Nummer gibt es nicht mehr. (Die Test-Builds vor v4.03 hießen v4.02a Build 1–5-DL4JC.)
 
@@ -294,7 +297,7 @@ ein Programmer (siehe [Wiederherstellung](#wiederherstellung-mit-programmer)).
    stammt aus der Zeit vor der Selbsthaltung, die der Bootloader seit 23.01.2007 hat, siehe `iBL.s` /
    `mini_lcd-trx2.c`.)
 5. Warten, bis *dsPIC6014A detected, firmware version 1.1* erscheint → OK.
-6. *open HEX file* → `firmware/Juma PA-100D v5.01.hex` wählen (liegt auch dem
+6. *open HEX file* → `firmware/Juma PA-100D v5.02.hex` wählen (liegt auch dem
    [neuesten Release](https://github.com/jcmerg/juma-pa100d-firmware/releases/latest) bei).
 7. Nur **„program flash“** darf angehakt sein. **„write data EEPROM“ und „configure registers“ dürfen
    nicht angehakt sein.** Es darf keine Fehlermeldung erscheinen (siehe unten).
@@ -318,7 +321,7 @@ noch die Gerätedatei oder Administratorrechte. Voraussetzung: Python 3 und pyse
 (`pip install pyserial`). Kabel und Prüfung der seriellen Schnittstelle (Schritte 1 und 2) bleiben gleich.
 
 ```
-python3 tools/juma-flash.py --port COM3 "firmware/Juma PA-100D v5.01.hex"
+python3 tools/juma-flash.py --port COM3 "firmware/Juma PA-100D v5.02.hex"
 ```
 
 (macOS/Linux: z. B. `--port /dev/cu.usbserial-XXXX` oder `/dev/ttyUSB0`; ohne `--port` werden die
@@ -461,12 +464,12 @@ nicht getestet.
 | `juma-pa100.h`, `pa100_eeprom.h` | Hardware-Definitionen, EEPROM-Strukturen |
 | `juma-trx2.gld` | Linker-Skript für den Ingenia-Bootloader |
 | `build-xc16.sh` | Build-Skript für XC16 |
-| `firmware/Juma PA-100D v5.01.hex` | Aktuelle Version |
+| `firmware/Juma PA-100D v5.02.hex` | Aktuelle Version |
 | `firmware/Juma PA-100D v4.01a Build 3 (original).hex` | Original v4.01a Build 3 (zum Zurückgehen) |
 | `tools/ingenia/ibl_dspiclist.xml` | Gerätedatei für den Ingenia-Loader |
 | `tools/juma-flash.py` | Serieller Firmware-Loader (Alternative zu Ingenia) |
 | `bootloader/` | Bootloader-Quellcode und HEX; `Bootldr_Juma-PA100_v104.hex` = komplettes Abbild für die Erstinstallation per Programmer (RS-928) |
-| `docs/manual/` | **Bedienungsanleitung v5.01** (PDF, Deutsch und Englisch) mit Markdown-Quellen; `build-manual.py` erzeugt die PDFs (pandoc, weasyprint) |
+| `docs/manual/` | **Bedienungsanleitung v5.02** (PDF, Deutsch und Englisch) mit Markdown-Quellen; `build-manual.py` erzeugt die PDFs (pandoc, weasyprint) |
 | `docs/` | Notizen aus der Original-Firmware (5B4AIY): Build-Protokoll, EEPROM-Einstellungen, Beispielausgaben der seriellen Schnittstelle |
 | `Juma PA-100D.mcp/.mcw/.mcs` | Originales MPLAB-8-Projekt |
 

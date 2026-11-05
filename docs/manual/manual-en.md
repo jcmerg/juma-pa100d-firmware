@@ -2,7 +2,7 @@
 
 <p class="title">JUMA PA-100D<br>Operating Manual</p>
 
-<p class="sub">Firmware v5.01 (DL4JC) · October 2026</p>
+<p class="sub">Firmware v5.02 (DL4JC) · November 2026</p>
 
 <p class="based">Based on the operating manual for firmware v4.00a by Adrian Ryan, 5B4AIY
 (revision 15-DEC-2021). Original firmware by Juha Niinikoski, OH2NLT, and Matti Hohtola, OH7SV.</p>
@@ -23,7 +23,7 @@ original v4.01a at any time without losing the calibration (see section 10).</p>
 
 The PA-100D is a 100 W all-band (160–10 m) linear amplifier, designed as a companion to the JUMA
 TRX-2 but usable with almost any low-power transceiver (Elecraft KX2/KX3, Yaesu FT-817/818, Xiegu,
-Icom IC-705 and others). This manual describes operation and setup with **firmware v5.01**. It runs
+Icom IC-705 and others). This manual describes operation and setup with **firmware v5.02**. It runs
 on the JUMA PA-100D and on the RS-928 clone.
 
 ## 1.1 Version numbers
@@ -79,7 +79,7 @@ longer. The quick reference in section 11 summarises all functions.
 - **Power on:** briefly press PWR. The start-up screen appears (if *Splash Screen* is on):
 
   <pre class="lcd">  JUMA PA-100D
-Firmware   v5.01</pre>
+Firmware   v5.02</pre>
 
   The amplifier always starts in **Standby**.
 - **Power off:** hold PWR. If you have changed a gain, the band (manual mode) or Auto/Manual since
@@ -160,6 +160,7 @@ Upper line: bar graph and the selected measurement. Lower line: gain (G1–G4), 
 | `STBY` | Standby |
 | `OPER` | Operate, receiving |
 | `TX` | Operate, transmitting |
+| `tx` | KEY active, but RF still held off: band not yet measured (F-Sense, QSK Off), relays settling after a band change, or input frequency above the selected filter |
 | `Err` | KEY active, but the band is unknown or out of band – TX inhibited |
 | `SWR`, `O/C`, `TEMP`, `Hi-V`, `Lo-V`, `Batt` | Alarm (flashing, section 9) |
 
@@ -200,7 +201,7 @@ Default: **F-Sense**
 | **F-Sense** | Frequency of the RF drive signal | Only RF and PTT needed; section 6.2 |
 | **FT817/818** | Band voltage on the BAND socket (FT-817/818) | |
 | **Xiegu** | Band voltage of the Xiegu ACC port (230 mV steps), also Brick2/3, SquareSDR | Section 8.4 |
-| **Manual** | Only BAND+/BAND− | **No protection at all** – a wrong band can destroy the filters or transistors. Use only as a last resort. |
+| **Manual** | Only BAND+/BAND− | **Almost no protection** – only an input frequency above the selected filter turns RF off. A band set too low (e.g. 80 m on the 20 m filter) is not detected and can destroy the filters or transistors. Use only as a last resort. |
 
 The menu order is: Yaesu CAT → KX2/KX3 → HR50 → Juma-TRX2 → F-Sense → FT817/818 → Xiegu → Manual.
 
@@ -320,7 +321,7 @@ The last page. Firmware version and credits; UP/DOWN scrolls:
 
 | Line | |
 |---|---|
-| `Firmware   v5.01` | Installed firmware version |
+| `Firmware   v5.02` | Installed firmware version |
 | `OH2NLT  Original` | Juha Niinikoski – original firmware |
 | `OH7SV       JUMA` | Matti Hohtola – JUMA |
 | `5B4AIY  to 4.01a` | Adrian Ryan – extensions and maintenance up to v4.01a |
@@ -384,7 +385,7 @@ reads too low.
 From the off state, hold **PWR** until a beep sounds and
 
 <pre class="lcd">  Calibration
-  Mode  v5.01</pre>
+  Mode  v5.02</pre>
 
 appears. Release PWR. Pages: DISPLAY brief/held forward, PWR brief/held back. Values: UP/DOWN.
 **OPER** opens the save prompt (BAND+ saves, PWR restores the previous calibration).
@@ -457,7 +458,8 @@ once.
 
 Averages the power and SWR measurement over 1–16 samples (approx. 4 ms each). The SWR protection
 in the interrupt averages over at least 8 ms and starts 20 ms after the beginning of a transmission,
-so normal relay switching does not cause false trips. Leave at **1** unless an external linear or
+so normal relay switching does not cause false trips. The first SWR decision is therefore made
+approx. 28 ms after TX starts with 1 sample, and approx. 84 ms with 16 samples. Leave at **1** unless an external linear or
 separate RX/TX antennas cause transient SWR alarms; more than 6–10 samples point to a problem
 elsewhere.
 
@@ -654,9 +656,9 @@ instructions: README in the repository (github.com/jcmerg/juma-pa100d-firmware).
 1. Check the serial connection first: *Serial Speed* 115200, *Serial Port* Test, type `H` and `F`
    several times – the output must be error-free. Save the `E` dump.
 2. Switch off. **Hold OPER and press PWR**: the boot loader starts.
-3. Load `firmware/Juma PA-100D v5.01.hex` – program flash only, **never** the data EEPROM or the
+3. Load `firmware/Juma PA-100D v5.02.hex` – program flash only, **never** the data EEPROM or the
    configuration registers. With `juma-flash.py`:
-   `python3 tools/juma-flash.py --port COM3 "firmware/Juma PA-100D v5.01.hex"`
+   `python3 tools/juma-flash.py --port COM3 "firmware/Juma PA-100D v5.02.hex"`
 4. Disconnect the power supply (PWR does not work in the boot loader), then switch on normally.
 
 **EEPROM:** the original configuration and calibration blocks are unchanged – no checksum error, the

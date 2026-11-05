@@ -49,6 +49,7 @@ extern unsigned int AD_Values[];	// A-D converter samples
 extern volatile unsigned int main_heartbeat;	// Main loop watchdog, see tx_guard() in timers_pwm.c
 extern volatile int filter_mismatch;			// Input frequency above the selected filter, see tx_guard() in timers_pwm.c
 extern volatile unsigned int relay_settle;		// Relay settling timer, see set_relays()
+extern volatile int isr_swr_trip;			// SWR trip detected in the 1mS interrupt, see tx_guard() in timers_pwm.c
 
 // Local Data
 const char trip_fmt[] = {"Trip:%11s"};
@@ -126,7 +127,7 @@ void set_alarm_flag(int on, int off)
 	if(i < 0) Enabled_Alarms &= off;
 	}
 
-int set_range(long value, long cal_factor, unsigned long max, unsigned long min)
+int set_range(long value, long cal_factor, long max, long min)
 	{
 	value *= cal_factor;
 
@@ -340,6 +341,7 @@ void change_cal_page(int direction)
 void service(int service_mode)
 	{
 	int rf_gain[11], i = 0;
+	int power_units = Power_Units;		// Restored on exit, otherwise the next configuration save stored Watts. DL4JC
 
 	Power_Units = _WATT;				// Ensure power meter is set to Watts for calibration
 
@@ -369,7 +371,8 @@ void service(int service_mode)
 // Set relays
 			set_relays();
 // Evaluate TX possibility, needed for RF Power & Drain Current calibration
-			if(key && (Current_Band != NOT_KNOWN) && (cal_page == 1 || cal_page == 2) && !relay_settle && !filter_mismatch)	// TX request
+			if(key && (Current_Band != NOT_KNOWN) && (cal_page == 1 || cal_page == 2) && !relay_settle && !filter_mismatch
+				&& !isr_swr_trip && !OC)	// TX request
 				{
 				pa_state = OPERATE;
 				TX_ON = ON;								// RF on
@@ -410,6 +413,7 @@ void service(int service_mode)
 		RF_Gain[i] = rf_gain[i];						// Restore original gain settings
 		} while (++i < 11);
 
+	Power_Units = power_units;							// Restore the power meter units
 	pa_state = STANDBY;									// Reset state to STANDBY
 	}	// End function
 

@@ -67,3 +67,7 @@ struct extval
 	unsigned int e_csum;			// Checksum
 	};
 
+// Number of words in each block (int, so that the loop counters compare without a sign conversion)
+#define DEFVAL_WORDS	((int)(sizeof(struct defval) / 2))
+#define CALVAL_WORDS	((int)(sizeof(struct calval) / 2))
+#define EXTVAL_WORDS	((int)(sizeof(struct extval) / 2))

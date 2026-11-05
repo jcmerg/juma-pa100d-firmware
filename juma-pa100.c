@@ -701,6 +701,22 @@
  - Serial test 'E': the Beep Tone service setting (extension block) is listed with the calibration settings, so that the
    dump is a complete record before a firmware update.
  - Serial test header: "(Modifications from v4.03 - DL4JC)" instead of "(Modified build - DL4JC)".
+ v5.02 - DL4JC - 05/NOV/2026
+ - Stack trap: the temporary stack is the start of the stack area (__SP_init). The old address 0x900 was inside the
+   static data, so the handler overwrote variables (also in v4.01a).
+ - Trap handlers show the LCD message before the serial output. putch() and the LCD busy wait are limited, so that a
+   UART that is not running or a defective LCD can no longer hang the firmware.
+ - TX enable (main loop and service menu) also tests isr_swr_trip and the over-current latch, which check_alarms()
+   has not yet transferred to the alarms in the same loop cycle.
+ - Display: "tx" (lower case) while KEY is active but RF is still held off (F-Sense measurement with QSK Off, relays
+   settling, filter mismatch), "TX" only while TX_ON is on.
+ - Service menu: the power meter units (Watts/dBm) are restored on exit. Previously the next configuration save
+   stored Watts.
+ - Settings read from the EEPROM are kept within the menu ranges (check_settings()).
+ - Start-up diagnostics on the serial port only in the Serial Test mode, and at the user baud rate.
+ - Bar graph: a value below the scale no longer sends a stray character to the LCD.
+ - ms_delay() is exactly 1mS (previously 1.085mS). beep() always restarts the tone (busy_counter was never set).
+ - Serial test 'E' shows the actual RS-232 port mode. Unused beep_flag, dsp_alarm and B_TYPE removed.
 */
 
 #include <stdio.h>
@@ -849,7 +865,7 @@ const char *f_sense[] = {				// Frequency Sense Mode Indexed by: Band_Select_Mod
 							"Juma-TRX2",// 2 - Juma TRX-2 special command set
 							"F-Sense",	// 3 - Automatic frequency measurement
 							"FT817/818",// 4 - Yaesu 5-Byte Binary
-							"Manual",	// 5 - Manual band selection - NO PROTECTION!
+							"Manual",	// 5 - Manual band selection - only the filter mismatch test of tx_guard(), a too low band is not detected!
 							"Xiegu",	// 6 - Xiegu ACC port band voltage
 							"HR50"		// 7 - Hardrock-50 serial protocol
 							};
@@ -1047,6 +1063,7 @@ const char Oper_Save[] =    {"OPER = Save/Exit"};
 const char System_Clk_Msg[] = {"System Clock: %li kHz\n\r"};
 const char STBY_Msg[] = {" STBY"};
 const char TX_Msg[] = {"  TX "};
+const char TX_Wait_Msg[] = {"  tx "};	// KEY active, but RF still held off (F-Sense measurement, relays settling, filter mismatch)
 const char Err_Msg[] = {" Err "};
 const char OPER_Msg[] = {" OPER"};
 const char _16s[] = {"%-16s"};
@@ -1063,7 +1080,6 @@ const char T_Char[] = {'F', 'C'};	// Used in send_status(). Indexed by: Temp_Sca
 // Timing
 volatile int loop_ctr = 0;				// Alarm blink counter
 int display_message = 0;		// Alarm message display flag
-int beep_flag = FALSE;
 int msg_time = 200;				// ASCII message time-out value, mS.
 volatile int rep_dly = _FAST;			// UP/DOWN button repeat delay time
 
@@ -1188,6 +1204,8 @@ void set_ext_defaults(void);			// Extension block functions, defined after save_
 void save_extval(void);
 unsigned int read_extval(void);
 void load_ext_modes(void);
+void check_settings(void);				// Settings within the menu ranges, defined before read_defval()
+void max_min(int *, int, int);
 
 /*
  CRC16 is a simple 16-bit cyclic redundancy checksum that provides a more robust method of checking data than many other methods.
@@ -1360,14 +1378,14 @@ void save_defval(void)
 
 	Cfg_Checksum = 0;
 
-	for(i = 0; i < (sizeof(struct defval) / 2); i++)
+	for(i = 0; i < DEFVAL_WORDS; i++)
 		{
 		word = eeprom.storage[i];
 // The mode is substituted only in the stored copy. Previously Band_Select_Mode itself was changed during the whole write,
 // and tx_guard() in the interrupt saw the wrong mode for approx. 150mS. DL4JC
 		if(i == mode_idx) word = (mode == XIEGU) ? FREQ_SENSE : (mode == HR50) ? ELECRAFT_KX3 : mode;
 
-		if(i == ((sizeof(struct defval) / 2) - 1)) word = Cfg_Checksum;	// The last word is the checksum
+		if(i == (DEFVAL_WORDS - 1)) word = Cfg_Checksum;	// The last word is the checksum
 		else Cfg_Checksum = crc_16(word, Cfg_Checksum);
 
  		EraseEE(EEPAGE, ((2 * i) + EEDEF), WORD);
@@ -1385,7 +1403,7 @@ void set_ext_defaults(void)
 
 	do	{
 		ext.ee[i] = 0;					// All settings off, spare words 0
-		} while (++i < (sizeof(struct extval) / 2));
+		} while (++i < EXTVAL_WORDS);
 
 	ext.extval.magic = EXT_MAGIC;
 	ext.extval.version = EXT_VERSION;
@@ -1398,9 +1416,9 @@ void save_extval(void)
 
 	Ext_Checksum = 0;
 
-	for(i = 0; i < (sizeof(struct extval) / 2); i++)
+	for(i = 0; i < EXTVAL_WORDS; i++)
 		{
-		if(i < ((sizeof(struct extval) / 2) - 1)) Ext_Checksum = crc_16(ext.ee[i], Ext_Checksum);
+		if(i < (EXTVAL_WORDS - 1)) Ext_Checksum = crc_16(ext.ee[i], Ext_Checksum);
 
 		EraseEE(EEPAGE, ((2 * i) + EEEXT), WORD);
 		WriteEE((int *)&(ext.ee[i]), EEPAGE, ((2 * i) + EEEXT), WORD);
@@ -1413,11 +1431,11 @@ unsigned int read_extval(void)
 	int i;
 	unsigned int checksum = 0;
 
-	for(i = 0; i < (sizeof(struct extval) / 2); i++)
+	for(i = 0; i < EXTVAL_WORDS; i++)
 		{
 		ReadEE(EEPAGE, ((2 * i) + EEEXT), (int *)&(ext.ee[i]), WORD);
 
-		if(i < ((sizeof(struct extval) / 2) - 1)) checksum = crc_16(ext.ee[i], checksum);
+		if(i < (EXTVAL_WORDS - 1)) checksum = crc_16(ext.ee[i], checksum);
 		}
 
 	if((checksum != Ext_Checksum) || (ext.extval.magic != EXT_MAGIC) || (ext.extval.version != EXT_VERSION)
@@ -1446,17 +1464,56 @@ void load_ext_modes(void)
 		Band_Select_Mode = HR50;
 	}
 
+/*
+ Keep the settings read from the EEPROM within the ranges of the menus. The checksum only shows that a block is complete,
+ not that its values are valid for this firmware, and many of them are used as table indices or divisors (band, gain,
+ band select mode, baud rate, start-up page, temperature limit, averaging samples). Valid values are not changed. DL4JC
+*/
+void check_settings(void)
+	{
+	int i = 0, v;
+
+	do	{
+		max_min(&RF_Gain[i], MAX_GAIN, MIN_GAIN);
+		} while (++i < 11);
+
+	max_min(&Current_Band, NOT_KNOWN, OUT_OF_BAND);
+	max_min(&Band_Select_Mode, MAX_BSEL_MODE, YAESU);
+	max_min(&Poll_Time, MAX_POLL_TIMER, OFF);
+	max_min(&eeprom.defval.br, 7, 0);
+	max_min(&Serial_Test_Mode, SERIAL_TEST, OFF);
+	max_min(&SWR_Trip, MAX_SWR, MIN_SWR);
+	max_min(&Temp_Scale, CELSIUS, FAHRENHEIT);
+	max_min(&Fan_Speed, HIGH_SPEED, NORMAL_SPEED);
+
+	if(Temp_Scale) max_min(&Alarm_Temp, MAX_TEMPC, MIN_TEMPC);
+	else max_min(&Alarm_Temp, MAX_TEMPF, MIN_TEMPF);
+
+	max_min(&Start_Page, TEMPERATURE, DEFAULT_PWR);
+	max_min(&Auto_Manual, AUTO_BAND, MANUAL_BAND);
+	max_min(&Band_Units, 1, 0);
+	max_min(&eeprom.defval.graph_limits, 1, 0);
+	max_min(&Scale_Type, SMALL, ORIGINAL);
+	max_min(&Power_Units, 1, 0);
+
+	v = (int)cal.calval.samples;
+	max_min(&v, SAMPLE_MAX, SAMPLE_MIN);
+	cal.calval.samples = (unsigned char)v;
+
+	if(cal.calval.splash > 1) cal.calval.splash = 1;
+	}
+
 // Read defaults
 unsigned int read_defval(void)
 	{
 	int i;
 	unsigned int checksum = 0;
 
-	for(i = 0; i < (sizeof(struct defval) / 2); i++)
+	for(i = 0; i < DEFVAL_WORDS; i++)
 		{
 		ReadEE(EEPAGE, ((2 * i) + EEDEF), (int *)&(eeprom.storage[i]), WORD);	// EEPROM Address 8 high bits, address + physical EEPROM start 16 low bits
 
-		if(i < ((sizeof(struct defval) / 2) - 1)) checksum = crc_16(eeprom.storage[i], checksum);
+		if(i < (DEFVAL_WORDS - 1)) checksum = crc_16(eeprom.storage[i], checksum);
 		}
 
 // Read factory defaults reset counter
@@ -1471,9 +1528,9 @@ void save_calval(void)
 
 	Cal_Checksum = 0;
 
-	for(i = 0; i < (sizeof(struct calval) / 2); i++)
+	for(i = 0; i < CALVAL_WORDS; i++)
 		{
-		if(i < ((sizeof(struct calval) / 2) - 1)) Cal_Checksum = crc_16(cal.ee[i], Cal_Checksum);
+		if(i < (CALVAL_WORDS - 1)) Cal_Checksum = crc_16(cal.ee[i], Cal_Checksum);
 
 		EraseEE(EEPAGE, ((2 * i) + EECAL), WORD);
 		WriteEE((int *)&(cal.ee[i]), EEPAGE, ((2 * i) + EECAL), WORD);	// EEPROM Address 8 high bits, address + physical EEPROM start 16 low bits
@@ -1488,11 +1545,11 @@ unsigned int read_calval(void)
 	int i;
 	unsigned int checksum = 0;
 
-	for(i = 0; i < (sizeof(struct calval) / 2); i++)
+	for(i = 0; i < CALVAL_WORDS; i++)
 		{
 		ReadEE(EEPAGE, ((2 * i) + EECAL), (int *)&(cal.ee[i]), WORD);	// EEPROM Address 8 high bits, address + physical EEPROM start 16 low bits
 
-		if(i < ((sizeof(struct calval) / 2) - 1)) checksum = crc_16(cal.ee[i], checksum);
+		if(i < (CALVAL_WORDS - 1)) checksum = crc_16(cal.ee[i], checksum);
 		}
 
 	return (checksum != Cal_Checksum);	// Compare the calculated checksum with that retrieved from the EEPROM
@@ -2504,11 +2561,11 @@ void check_alarms(void)
  In the following tests, the battery voltage calibration factor has already been taken into account in the limits,
  and we are comparing corrected A-D converter values. (See function svc_7() in service.c for an example.)
 */
-	if(batt_raw > cal.calval.overvoltage_trip) alarms |= HI_V;			// Set alarm bit
+	if(batt_raw > (unsigned int)cal.calval.overvoltage_trip) alarms |= HI_V;			// Set alarm bit
 // If the low-voltage alarm is disabled, then batt_pre_limit is set to 0 as part of the start-up sequence.
-	if(batt_raw < batt_pre_limit) alarms |= LO_BATT;					// Set alarm bit
+	if(batt_raw < (unsigned int)batt_pre_limit) alarms |= LO_BATT;					// Set alarm bit
 
-	if(batt_raw < cal.calval.undervoltage_trip) alarms |= LO_V;			// Set alarm bit
+	if(batt_raw < (unsigned int)cal.calval.undervoltage_trip) alarms |= LO_V;			// Set alarm bit
 
 // Check over current alarm bit & set alarm
 	if(OC) alarms |= CURR_AL;											// Set alarm bit
@@ -2585,6 +2642,8 @@ void save_settings(int prompt, int mode)
 
 		if(mode & 3)
 			read_extval();					// Both have settings in the extension block (Beep Tone, F-Sense QSK). DL4JC
+
+		check_settings();
 
 		if(mode & 2)
 			{
@@ -2807,7 +2866,7 @@ int get_817_band(int v)
 	int i = 10;
 
 	do	{
-		if(v > y817_band_limits[i]) break;	// We have found the band,
+		if((unsigned int)v > y817_band_limits[i]) break;	// We have found the band,
 		} while (--i);						// otherwise return UNKNOWN.
 
 	return i;
@@ -3435,14 +3494,21 @@ int main(void)
 	if(read_extval()) save_extval();	// Extension block missing (first start of this firmware) or invalid: save the defaults.
 
 	load_ext_modes();					// Restore a band select mode stored in the extension block (Xiegu)
+	check_settings();					// Values within the menu ranges
 
- 	if((Serial_Test_Mode == SERIAL_TEST) && !BAND_FROM_SERIAL)
+	if(!w) SetUSART1baud(eeprom.defval.br);	// Diagnostics at the user baud rate, not at 9600. DL4JC
+// The diagnostics are only sent in the Serial Test mode: a transceiver on the same RS-232 line would otherwise receive
+// plain text instead of CAT data. If the configuration itself is invalid, the mode is unknown, so nothing is sent. DL4JC
+ 	if((Serial_Test_Mode == SERIAL_TEST) && !BAND_FROM_SERIAL && !w)
 		printf(EEPROM_Chksum, checksum_msg[y], checksum_msg[w], fd_counter);
 
 	if(y || w)						// Test return flags. If either is non-zero, then there is an EEPROM read fault
 		{
-		dump_eeprom();				// Test, show EEPROM content before reset
-		printf(Chksum_Err);
+		if((Serial_Test_Mode == SERIAL_TEST) && !BAND_FROM_SERIAL && !w)
+			{
+			dump_eeprom();			// Test, show EEPROM content before reset
+			printf(Chksum_Err);
+			}
 		display_screen(Chksum_Err_Msg, Loading_Defaults);
 		set_factory_defaults();		// EEPROM empty or corrupted, set factory defaults
 		save_calval();
@@ -3716,7 +3782,7 @@ int main(void)
 					if(key)							// and there is a transmit request,
 						{
 						if((Current_Band != NOT_KNOWN) && (Current_Band != OUT_OF_BAND))	// and a valid band is selected,
-							prompt_msg = TX_Msg;	// then select the TX message,
+							prompt_msg = (TX_ON) ? TX_Msg : TX_Wait_Msg;	// then select the TX message, "tx" while RF is still held off,
 						else
 							prompt_msg = Err_Msg;	// otherwise select the Error message.
 						}
@@ -3746,7 +3812,7 @@ int main(void)
 			set_relays();							// Set gain & filter relays
 // Evaluate TX possibility
 			if((key) && (pa_state) && (!alarms) && (Current_Band != NOT_KNOWN) && (Current_Band != OUT_OF_BAND)
-				&& (!relay_settle) && (!filter_mismatch)
+				&& (!relay_settle) && (!filter_mismatch) && (!isr_swr_trip) && (!OC)	// SWR trip or O/C latch not yet in alarms
 				&& ((Band_Select_Mode != FREQ_SENSE) || FSense_QSK || fsense_confirmed))	// and with F-Sense QSK Off the band has been measured,
 				{
 				TX_ON = TRANSMIT;					// RF on
